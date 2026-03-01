@@ -437,12 +437,12 @@ export default function Home() {
                 
                 <div className="relative h-full flex flex-col justify-end p-6 md:p-12 max-w-4xl">
                   {/* Badge */}
-                  <div className=\"flex items-center gap-3 mb-4\">
-                    <span className=\"bg-emerald-500 border border-emerald-400 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-full tracking-widest flex items-center gap-2\">
-                      <Sparkles className=\"w-3 h-3\" />
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="bg-emerald-500 border border-emerald-400 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-full tracking-widest flex items-center gap-2">
+                      <Sparkles className="w-3 h-3" />
                       Tonight's Invitation
                     </span>
-                    <span className=\"bg-white/10 border border-white/20 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-full tracking-widest\">
+                    <span className="bg-white/10 border border-white/20 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-full tracking-widest">
                       LIVE NOW
                     </span>
                   </div>
@@ -657,9 +657,9 @@ export default function Home() {
                           <h3 className="text-base font-black italic uppercase leading-tight text-black tracking-tighter line-clamp-2" title={e.title}>
                             {e.title}
                           </h3>
-                          <div className=\"flex items-center gap-1.5 text-slate-400 font-medium text-[10px] uppercase tracking-tight\">
-                            <MapPin className=\"w-3 h-3\" />
-                            <span className=\"truncate\">{e.venue}</span>
+                          <div className="flex items-center gap-1.5 text-slate-400 font-medium text-[10px] uppercase tracking-tight">
+                            <MapPin className="w-3 h-3" />
+                            <span className="truncate">{e.venue}</span>
                           </div>
                         </div>
 
@@ -729,20 +729,20 @@ export default function Home() {
               </div>
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {([\
-                  { id: \"profile\", label: \"Profile\", icon: UserPlus },\
-                  { id: \"connect\", label: \"Connect\", icon: Users },\
-                  { id: \"plan\", label: \"Trip Plan\", icon: Plane },\
-                  { id: \"notify\", label: \"Alerts\", icon: Bell },\
-                  { id: \"discover\", label: \"Discover\", icon: Sparkles },\
+                  { id: "profile", label: "Profile", icon: UserPlus },\
+                  { id: "connect", label: "Connect", icon: Users },\
+                  { id: "plan", label: "Trip Plan", icon: Plane },\
+                  { id: "notify", label: "Alerts", icon: Bell },\
+                  { id: "discover", label: "Discover", icon: Sparkles },\
                 ] as const).map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setSettingsTab(tab.id)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] whitespace-nowrap transition-all ${
-                      settingsTab === tab.id ? \"bg-white text-black border-white\" : \"bg-white/5 border-white/10 text-white hover:border-white/30\"
+                      settingsTab === tab.id ? "bg-white text-black border-white" : "bg-white/5 border-white/10 text-white hover:border-white/30"
                     }`}
                   >
-                    <tab.icon className=\"w-4 h-4\" />
+                    <tab.icon className="w-4 h-4" />
                     {tab.label}
                   </button>
                 ))}
@@ -791,12 +791,12 @@ export default function Home() {
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
                     <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Social Mode</p>
                     <div className="grid grid-cols-2 gap-3">
-                      {([\"SOLO\", \"DATE\", \"MATES\", \"FAMILY\"] as SettingMode[]).map((m) => (
+                      {(["SOLO", "DATE", "MATES", "FAMILY"] as SettingMode[]).map((m) => (
                         <button
                           key={m}
                           onClick={() => setMode(m)}
                           className={`py-3 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
-                            mode === m ? \"bg-white text-black border-white\" : \"bg-white/5 border-white/10 text-white hover:border-white/30\"
+                            mode === m ? "bg-white text-black border-white" : "bg-white/5 border-white/10 text-white hover:border-white/30"
                           }`}
                         >
                           {m}
@@ -821,10 +821,10 @@ export default function Home() {
                     <button
                       onClick={() => setSocialMatchOptIn(!socialMatchOptIn)}
                       className={`w-full py-3 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
-                        socialMatchOptIn ? \"bg-emerald-500 text-white border-emerald-500\" : \"bg-white/5 border-white/10 text-white\"
+                        socialMatchOptIn ? "bg-emerald-500 text-white border-emerald-500" : "bg-white/5 border-white/10 text-white"
                       }`}
                     >
-                      {socialMatchOptIn ? \"✅ Opt-In Active\" : \"Opt In to Social Match\"}
+                      {socialMatchOptIn ? "✅ Opt-In Active" : "Opt In to Social Match"}
                     </button>
                   </div>
 
@@ -844,9 +844,9 @@ export default function Home() {
               {settingsTab === "plan" && (
                 <div className="space-y-6">
                   <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-6 space-y-4">
-                    <div className=\"flex items-center gap-2\">
-                      <Plane className=\"w-5 h-5 text-orange-400\" />
-                      <p className=\"text-sm font-black uppercase tracking-[0.2em] text-white\">48h Visitor Quickstart</p>
+                    <div className="flex items-center gap-2">
+                      <Plane className="w-5 h-5 text-orange-400" />
+                      <p className="text-sm font-black uppercase tracking-[0.2em] text-white">48h Visitor Quickstart</p>
                     </div>
                     <p className="text-sm text-slate-300 leading-relaxed">Generate a 2-day event itinerary based on your vibe and budget.</p>
                     <div className="grid grid-cols-2 gap-3">
@@ -906,15 +906,15 @@ export default function Home() {
                       className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white"
                     />
                     <div className="flex flex-wrap gap-2">
-                      {([\"TONIGHT\", \"WEEKEND\", \"NEAR_ME\", \"NEW_DROPS\"] as string[]).map((type) => (
+                      {(["TONIGHT", "WEEKEND", "NEAR_ME", "NEW_DROPS"] as string[]).map((type) => (
                         <button
                           key={type}
                           onClick={() => toggleNotifyType(type)}
                           className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
-                            notifyTypes.includes(type) ? \"bg-amber-500 text-white border-amber-500\" : \"bg-white/5 border-white/10 text-white\"
+                            notifyTypes.includes(type) ? "bg-amber-500 text-white border-amber-500" : "bg-white/5 border-white/10 text-white"
                           }`}
                         >
-                          {type.replace(\"_\", \" \")}
+                          {type.replace("_", " ")}
                         </button>
                       ))}
                     </div>
@@ -933,27 +933,27 @@ export default function Home() {
               {/* Discover (10 Differences) */}
               {settingsTab === "discover" && (
                 <div className="space-y-4">
-                  <div className=\"rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 p-6 space-y-4\">
-                    <div className=\"flex items-center gap-2\">
-                      <Sparkles className=\"w-5 h-5 text-fuchsia-400\" />
-                      <p className=\"text-sm font-black uppercase tracking-[0.2em] text-white\">What Makes jOY Different</p>
+                  <div className="rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-fuchsia-400" />
+                      <p className="text-sm font-black uppercase tracking-[0.2em] text-white">What Makes jOY Different</p>
                     </div>
-                    <div className=\"space-y-3\">
+                    <div className="space-y-3">
                       {[
-                        { icon: Shield, text: \"Real event sources • No fake listings\" },
-                        { icon: Heart, text: \"Built to cure loneliness, not sell ads\" },
-                        { icon: Users, text: \"Anonymous social matching (opt-in)\" },
-                        { icon: Zap, text: \"Smart filters: Price, Energy, Indoor/Outdoor\" },
-                        { icon: CalendarPlus, text: \"48h trip planner for visitors\" },
-                        { icon: Bell, text: \"Notification intents (not spam)\" },
-                        { icon: TrendingUp, text: \"Live event counts & Hot Meter\" },
-                        { icon: Gift, text: \"Free events highlighted\" },
-                        { icon: MapPin, text: \"3 cities: Brisbane, Gold Coast, Sunshine Coast\" },
-                        { icon: Compass, text: \"Discovery-first design • Always more to explore\" },
+                        { icon: Shield, text: "Real event sources • No fake listings" },
+                        { icon: Heart, text: "Built to cure loneliness, not sell ads" },
+                        { icon: Users, text: "Anonymous social matching (opt-in)" },
+                        { icon: Zap, text: "Smart filters: Price, Energy, Indoor/Outdoor" },
+                        { icon: CalendarPlus, text: "48h trip planner for visitors" },
+                        { icon: Bell, text: "Notification intents (not spam)" },
+                        { icon: TrendingUp, text: "Live event counts & Hot Meter" },
+                        { icon: Gift, text: "Free events highlighted" },
+                        { icon: MapPin, text: "3 cities: Brisbane, Gold Coast, Sunshine Coast" },
+                        { icon: Compass, text: "Discovery-first design • Always more to explore" },
                       ].map((item, idx) => (
-                        <div key={idx} className=\"flex items-start gap-3 bg-black/30 border border-white/10 rounded-xl p-4\">
-                          <item.icon className=\"w-5 h-5 text-fuchsia-400 mt-0.5 flex-shrink-0\" />
-                          <p className=\"text-sm text-slate-300 leading-relaxed\">{item.text}</p>
+                        <div key={idx} className="flex items-start gap-3 bg-black/30 border border-white/10 rounded-xl p-4">
+                          <item.icon className="w-5 h-5 text-fuchsia-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-slate-300 leading-relaxed">{item.text}</p>
                         </div>
                       ))}
                     </div>
