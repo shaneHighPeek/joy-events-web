@@ -728,16 +728,16 @@ export default function Home() {
                 </button>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {([\
-                  { id: "profile", label: "Profile", icon: UserPlus },\
-                  { id: "connect", label: "Connect", icon: Users },\
-                  { id: "plan", label: "Trip Plan", icon: Plane },\
-                  { id: "notify", label: "Alerts", icon: Bell },\
-                  { id: "discover", label: "Discover", icon: Sparkles },\
-                ] as const).map((tab) => (
+                {[
+                  { id: "profile", label: "Profile", icon: UserPlus },
+                  { id: "connect", label: "Connect", icon: Users },
+                  { id: "plan", label: "Trip Plan", icon: Plane },
+                  { id: "notify", label: "Alerts", icon: Bell },
+                  { id: "discover", label: "Discover", icon: Sparkles },
+                ].map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => setSettingsTab(tab.id)}
+                    onClick={() => setSettingsTab(tab.id as any)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] whitespace-nowrap transition-all ${
                       settingsTab === tab.id ? "bg-white text-black border-white" : "bg-white/5 border-white/10 text-white hover:border-white/30"
                     }`}
