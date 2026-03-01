@@ -407,11 +407,11 @@ export default function Home() {
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
                     </div>
                   </button>
-                ))}\
+                ))
               </div>
 
-              <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 text-center space-y-3\">\
-                <div className=\"flex items-center justify-center gap-2\">
+              <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 text-center space-y-3">
+                <div className="flex items-center justify-center gap-2">
                   <Users className={`w-5 h-5 ${current.accent}`} />
                   <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Not Alone</p>
                 </div>
