@@ -407,7 +407,7 @@ export default function Home() {
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
                     </div>
                   </button>
-                ))
+                ))}
               </div>
 
               <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 text-center space-y-3">
