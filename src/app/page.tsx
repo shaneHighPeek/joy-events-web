@@ -13,7 +13,6 @@ import {
   ChevronRight,
   MapPin,
   Calendar,
-  Zap,
   Heart,
   Users,
   Sparkles,
@@ -21,6 +20,15 @@ import {
   ArrowRight,
   SlidersHorizontal,
   X,
+  Mail,
+  Bell,
+  Plane,
+  CalendarPlus,
+  UserPlus,
+  Zap,
+  Gift,
+  Shield,
+  MessageCircle,
 } from "lucide-react";
 
 type Vibe = "DEFAULT" | "SPORTS" | "MUSIC" | "CHILL";
@@ -29,6 +37,7 @@ type PriceBand = "ANY" | "FREE" | "$" | "$$" | "$$$";
 type Energy = "ANY" | "LOW" | "MEDIUM" | "HIGH";
 type IndoorMode = "ANY" | "INDOOR" | "OUTDOOR";
 type PulseWindow = "NOW" | "TONIGHT" | "WEEKEND" | "ANY";
+type SettingMode = "SOLO" | "DATE" | "MATES" | "FAMILY";
 
 interface Event {
   id: string;
@@ -108,6 +117,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"profile" | "connect" | "plan" | "notify" | "discover">("profile");
 
   const [query, setQuery] = useState("");
   const [priceBand, setPriceBand] = useState<PriceBand>("ANY");
@@ -116,8 +126,49 @@ export default function Home() {
   const [pulseWindow, setPulseWindow] = useState<PulseWindow>("ANY");
 
   const [savedEventIds, setSavedEventIds] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Profile
+  const [mode, setMode] = useState<SettingMode>("SOLO");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Social Connect
+  const [socialMatchOptIn, setSocialMatchOptIn] = useState(false);
+  const [groupShortlist, setGroupShortlist] = useState<string[]>([]);
+
+  // Trip Planner
+  const [tripRegion, setTripRegion] = useState<Location>("BRISBANE");
+  const [tripVibe, setTripVibe] = useState<Vibe>("DEFAULT");
+  const [tripBudget, setTripBudget] = useState<PriceBand>("$$");
+  const [tripPlan, setTripPlan] = useState<string[]>([]);
+  const [tripLoading, setTripLoading] = useState(false);
+
+  // Notifications
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifyTypes, setNotifyTypes] = useState<string[]>(["TONIGHT", "WEEKEND"]);
+  const [notifyMessage, setNotifyMessage] = useState("");
+  const [notifyLoading, setNotifyLoading] = useState(false);
 
   const current = themes[vibe];
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user;
+      setUserId(user?.id ?? null);
+      setUserEmail(user?.email ?? null);
+      if (user?.id) loadSavedEvents(user.id);
+    });
+  }, []);
+
+  const loadSavedEvents = async (uid: string) => {
+    if (!supabase) return;
+    const { data } = await supabase.from("saved_events").select("event_id").eq("user_id", uid);
+    if (data) setSavedEventIds(data.map((r) => r.event_id));
+  };
 
   const fetchEvents = async (selectedVibe: Vibe, selectedLocation: Location) => {
     setLoading(true);
@@ -150,14 +201,76 @@ export default function Home() {
         (pulseWindow === "NOW" && /today|now/i.test(e.date)) ||
         (pulseWindow === "TONIGHT" && /today|tonight/i.test(e.date)) ||
         (pulseWindow === "WEEKEND" && /sat|sun|weekend/i.test(e.date));
-
       return matchQuery && matchPrice && matchEnergy && matchIndoor && matchPulse;
     });
   }, [events, query, priceBand, energy, indoorMode, pulseWindow]);
 
-  const topEvents = useMemo(() => filteredEvents.slice(0, 3), [filteredEvents]);
   const tonightCount = useMemo(() => events.filter((e) => /today|tonight/i.test(e.date)).length, [events]);
   const freeCount = useMemo(() => events.filter((e) => e.priceBand === "FREE").length, [events]);
+
+  const sendMagicLink = async () => {
+    if (!supabase || !authEmail.trim()) {
+      setAuthMessage("Enter an email first.");
+      return;
+    }
+    setAuthLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: authEmail.trim(),
+      options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+    });
+    setAuthMessage(error ? error.message : "✨ Magic link sent! Check your inbox.");
+    setAuthLoading(false);
+  };
+
+  const signOut = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setUserId(null);
+    setUserEmail(null);
+    setAuthMessage("Signed out.");
+  };
+
+  const generateTripPlan = async () => {
+    setTripLoading(true);
+    try {
+      const res = await fetch(`/api/events?vibe=${tripVibe}&location=${tripRegion}`);
+      const data = await res.json();
+      const picks = (data.events || []).slice(0, 4);
+      const plan = [
+        `Day 1 Morning: ${picks[0]?.title || "Cafe + local walk"}`,
+        `Day 1 Evening: ${picks[1]?.title || "Live event"}`,
+        `Day 2 Morning: ${picks[2]?.title || "Market or cultural stop"}`,
+        `Day 2 Evening: ${picks[3]?.title || "Final night feature"}`,
+      ];
+      setTripPlan(plan);
+    } catch (error) {
+      console.error("Trip plan failed", error);
+    } finally {
+      setTripLoading(false);
+    }
+  };
+
+  const submitNotificationIntent = async () => {
+    if (!notifyEmail.trim() || notifyTypes.length === 0 || !supabase) {
+      setNotifyMessage("Enter email and pick at least one alert type.");
+      return;
+    }
+    setNotifyLoading(true);
+    const { error } = await supabase.from("notification_intents").insert({
+      user_id: userId,
+      email: notifyEmail.trim(),
+      region: location || "ANY",
+      vibe: vibe,
+      intent_types: notifyTypes,
+      created_at: new Date().toISOString(),
+    });
+    setNotifyLoading(false);
+    setNotifyMessage(error ? "Could not save right now." : "✅ You're on the list!");
+  };
+
+  const toggleNotifyType = (type: string) => {
+    setNotifyTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
+  };
 
   return (
     <main className={`min-h-screen transition-all duration-1000 flex flex-col items-center relative ${current.outsideBg}`}>
@@ -191,13 +304,14 @@ export default function Home() {
           </div>
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 text-white/70 hover:text-white transition-all"
+            className="relative p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 text-white/70 hover:text-white transition-all group"
           >
             <Menu className="w-5 h-5" />
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-pulse border-2 border-black" />
           </button>
         </div>
 
-        {/* Landing (Abundant Discovery) */}
+        {/* Landing */}
         {!showEvents && (
           <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 space-y-12">
             <div className="text-center space-y-6 max-w-2xl">
@@ -222,7 +336,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Rich Location Cards with Teases */}
             <div className="w-full max-w-5xl space-y-4">
               <div className="flex items-center justify-between px-2">
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Choose Your City</p>
@@ -239,8 +352,6 @@ export default function Home() {
                     className={`group relative bg-gradient-to-br ${loc.gradient} backdrop-blur-sm border border-white/10 rounded-3xl p-6 md:p-8 text-left transition-all duration-500 hover:border-white/30 hover:-translate-y-2 ${loc.borderGlow}`}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
-                    
-                    {/* Icon + Badge */}
                     <div className="relative flex items-start justify-between mb-4">
                       <div className="text-5xl mb-2">{loc.icon}</div>
                       <div className="flex flex-col items-end gap-1">
@@ -250,14 +361,10 @@ export default function Home() {
                         </span>
                       </div>
                     </div>
-
-                    {/* Title */}
                     <h3 className="relative text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-white leading-none mb-2">
                       {loc.label}
                     </h3>
                     <p className="relative text-sm text-slate-300 font-medium mb-4">{loc.subtitle}</p>
-
-                    {/* Tease Stats */}
                     <div className="relative flex items-center justify-between pt-4 border-t border-white/10">
                       <div className="flex flex-col">
                         <span className="text-2xl font-black text-white">{events.length || "42"}</span>
@@ -268,8 +375,6 @@ export default function Home() {
                         <ArrowRight className="w-4 h-4" />
                       </div>
                     </div>
-
-                    {/* Pulse Indicator */}
                     <div className="absolute top-6 right-6 w-3 h-3">
                       <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
@@ -278,7 +383,6 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* "More Waiting" Teaser */}
               <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 text-center space-y-3">
                 <div className="flex items-center justify-center gap-2">
                   <Users className={`w-5 h-5 ${current.accent}`} />
@@ -295,7 +399,6 @@ export default function Home() {
         {/* Events View */}
         {showEvents && (
           <div className="flex-1 flex flex-col">
-            {/* Search + Quick Pulse Filters */}
             <div className="p-6 border-b border-white/10 space-y-4">
               <div className="flex items-center justify-between">
                 <button
@@ -317,7 +420,6 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input
@@ -327,30 +429,22 @@ export default function Home() {
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all"
                 />
               </div>
-
-              {/* Quick Pulse Buttons (Always Visible) */}
               <div className="flex flex-wrap gap-2">
                 {(["ANY", "NOW", "TONIGHT", "WEEKEND"] as (PulseWindow | "ANY")[]).map((pulse) => (
                   <button
                     key={pulse}
                     onClick={() => setPulseWindow(pulse === "ANY" ? "ANY" : pulse)}
                     className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
-                      pulseWindow === pulse
-                        ? "bg-white text-black border-white"
-                        : "bg-white/5 border-white/10 text-white hover:border-white/30"
+                      pulseWindow === pulse ? "bg-white text-black border-white" : "bg-white/5 border-white/10 text-white hover:border-white/30"
                     }`}
                   >
                     {pulse === "ANY" ? "All" : pulse}
                     {pulse === "TONIGHT" && tonightCount > 0 && (
-                      <span className="ml-2 bg-orange-500 text-white px-1.5 py-0.5 rounded-full text-[8px] font-black">
-                        {tonightCount}
-                      </span>
+                      <span className="ml-2 bg-orange-500 text-white px-1.5 py-0.5 rounded-full text-[8px] font-black">{tonightCount}</span>
                     )}
                   </button>
                 ))}
               </div>
-
-              {/* Collapsible Advanced Filters */}
               {showFilters && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="space-y-1.5">
@@ -395,8 +489,6 @@ export default function Home() {
                 </div>
               )}
             </div>
-
-            {/* "More Coming" Teaser Bar */}
             <div className="px-6 py-3 border-b border-white/5 bg-gradient-to-r from-white/5 to-transparent flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingUp className={`w-4 h-4 ${current.accent}`} />
@@ -406,8 +498,6 @@ export default function Home() {
               </div>
               <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-600 hidden md:block">Scroll for more →</span>
             </div>
-
-            {/* Event Grid */}
             <div className="p-6">
               {loading ? (
                 <div className="h-96 flex flex-col items-center justify-center space-y-4">
@@ -417,7 +507,7 @@ export default function Home() {
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredEvents.map((e, idx) => (
+                    {filteredEvents.map((e) => (
                       <div
                         key={e.id}
                         className="group bg-white rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex flex-col h-full"
@@ -457,9 +547,7 @@ export default function Home() {
                               {e.venue}
                             </div>
                           </div>
-
                           <div className="flex-1" />
-
                           <div className="flex gap-2">
                             <a
                               href={e.link}
@@ -477,17 +565,12 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-
-                  {/* "Keep Scrolling" Prompt */}
                   {filteredEvents.length > 6 && (
                     <div className="mt-12 text-center space-y-3 py-8 border-t border-white/10">
-                      <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">
-                        {filteredEvents.length - 6}+ More Events Below
-                      </p>
+                      <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">{filteredEvents.length - 6}+ More Events Below</p>
                       <p className="text-xs text-slate-600">Keep scrolling • Your joy is waiting</p>
                     </div>
                   )}
-
                   {filteredEvents.length === 0 && (
                     <div className="text-center py-20 space-y-4">
                       <p className="text-lg font-black uppercase tracking-[0.2em] text-slate-500">No matches yet</p>
@@ -501,21 +584,264 @@ export default function Home() {
         )}
       </div>
 
-      {/* Settings Modal */}
+      {/* Settings Hub (Feature Discovery) */}
       {showSettings && (
         <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-6">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowSettings(false)} />
-          <div className="relative w-full max-w-md bg-slate-950 border border-white/10 rounded-t-[3rem] md:rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom duration-500">
-            <div className="flex justify-between items-center">
-              <h3 className="text-2xl font-black italic uppercase text-white tracking-tighter">Settings</h3>
-              <button onClick={() => setShowSettings(false)} className="p-2 border border-white/10 rounded-full text-white/50 hover:text-white">
-                <X className="w-5 h-5" />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowSettings(false)} />
+          <div className="relative w-full max-w-2xl max-h-[90vh] bg-slate-950 border border-white/10 rounded-t-[3rem] md:rounded-[3rem] overflow-hidden animate-in slide-in-from-bottom duration-500">
+            <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-xl border-b border-white/10 p-6">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-2xl font-black italic uppercase text-white tracking-tighter">Connect & Plan</h3>
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 font-bold mt-1">Unlock Your jOY Features</p>
+                </div>
+                <button onClick={() => setShowSettings(false)} className="p-2 border border-white/10 rounded-full text-white/50 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {([
+                  { id: "profile", label: "Profile", icon: UserPlus },
+                  { id: "connect", label: "Connect", icon: Users },
+                  { id: "plan", label: "Trip Plan", icon: Plane },
+                  { id: "notify", label: "Alerts", icon: Bell },
+                  { id: "discover", label: "Discover", icon: Sparkles },
+                ] as const).map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSettingsTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] whitespace-nowrap transition-all ${
+                      settingsTab === tab.id ? "bg-white text-black border-white" : "bg-white/5 border-white/10 text-white hover:border-white/30"
+                    }`}
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-160px)]">
+              {/* Profile */}
+              {settingsTab === "profile" && (
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <UserPlus className="w-5 h-5 text-blue-400" />
+                      <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Free Account</p>
+                    </div>
+                    {userId ? (
+                      <div className="space-y-3">
+                        <p className="text-sm text-slate-300">Signed in as {userEmail || "user"}.</p>
+                        <button
+                          onClick={signOut}
+                          className="px-4 py-2 rounded-xl border border-white/20 text-xs font-black uppercase tracking-[0.15em] hover:bg-white/5"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <input
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white"
+                        />
+                        <button
+                          onClick={sendMagicLink}
+                          disabled={authLoading}
+                          className="w-full bg-white text-black py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] disabled:opacity-60"
+                        >
+                          {authLoading ? <Loader2 className="inline w-4 h-4 animate-spin" /> : "Send Magic Link"}
+                        </button>
+                      </div>
+                    )}
+                    {authMessage && <p className="text-xs text-slate-400">{authMessage}</p>}
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+                    <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Social Mode</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["SOLO", "DATE", "MATES", "FAMILY"] as SettingMode[]).map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setMode(m)}
+                          className={`py-3 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
+                            mode === m ? "bg-white text-black border-white" : "bg-white/5 border-white/10 text-white hover:border-white/30"
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Connect */}
+              {settingsTab === "connect" && (
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-emerald-400" />
+                      <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Social Match (Anonymous)</p>
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      See anonymous compatible attendees for events. Connect with people who share your vibe—privately and respectfully.
+                    </p>
+                    <button
+                      onClick={() => setSocialMatchOptIn(!socialMatchOptIn)}
+                      className={`w-full py-3 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
+                        socialMatchOptIn ? "bg-emerald-500 text-white border-emerald-500" : "bg-white/5 border-white/10 text-white"
+                      }`}
+                    >
+                      {socialMatchOptIn ? "✅ Opt-In Active" : "Opt In to Social Match"}
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-5 h-5 text-fuchsia-400" />
+                      <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Group Planning</p>
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      Build shortlists with friends. Vote on events. Share plans. Coming soon.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Trip Plan */}
+              {settingsTab === "plan" && (
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Plane className="w-5 h-5 text-orange-400" />
+                      <p className="text-sm font-black uppercase tracking-[0.2em] text-white">48h Visitor Quickstart</p>
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">Generate a 2-day event itinerary based on your vibe and budget.</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <select
+                        value={tripRegion}
+                        onChange={(e) => setTripRegion(e.target.value as Location)}
+                        className="bg-slate-900 border border-white/20 rounded-xl px-3 py-2.5 text-sm text-white"
+                      >
+                        <option value="BRISBANE">Brisbane</option>
+                        <option value="GC">Gold Coast</option>
+                        <option value="SC">Sunshine Coast</option>
+                      </select>
+                      <select
+                        value={tripVibe}
+                        onChange={(e) => setTripVibe(e.target.value as Vibe)}
+                        className="bg-slate-900 border border-white/20 rounded-xl px-3 py-2.5 text-sm text-white"
+                      >
+                        <option value="DEFAULT">Default</option>
+                        <option value="SPORTS">Sports</option>
+                        <option value="MUSIC">Music</option>
+                        <option value="CHILL">Chill</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={generateTripPlan}
+                      disabled={tripLoading}
+                      className="w-full bg-orange-500 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] disabled:opacity-60"
+                    >
+                      {tripLoading ? <Loader2 className="inline w-4 h-4 animate-spin" /> : "Generate Plan"}
+                    </button>
+                    {tripPlan.length > 0 && (
+                      <div className="space-y-2 mt-4">
+                        {tripPlan.map((stop, idx) => (
+                          <p key={idx} className="text-sm text-slate-300 bg-black/30 border border-white/10 rounded-xl p-3">
+                            {stop}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Notify */}
+              {settingsTab === "notify" && (
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-amber-400" />
+                      <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Get Notified</p>
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">Capture your interests now. We'll send you alerts when matching events drop.</p>
+                    <input
+                      value={notifyEmail}
+                      onChange={(e) => setNotifyEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {(["TONIGHT", "WEEKEND", "NEAR_ME", "NEW_DROPS"] as string[]).map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => toggleNotifyType(type)}
+                          className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
+                            notifyTypes.includes(type) ? "bg-amber-500 text-white border-amber-500" : "bg-white/5 border-white/10 text-white"
+                          }`}
+                        >
+                          {type.replace("_", " ")}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={submitNotificationIntent}
+                      disabled={notifyLoading}
+                      className="w-full bg-amber-500 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] disabled:opacity-60"
+                    >
+                      {notifyLoading ? <Loader2 className="inline w-4 h-4 animate-spin" /> : "Save Alert Preferences"}
+                    </button>
+                    {notifyMessage && <p className="text-xs text-slate-400">{notifyMessage}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* Discover (10 Differences) */}
+              {settingsTab === "discover" && (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-fuchsia-400" />
+                      <p className="text-sm font-black uppercase tracking-[0.2em] text-white">What Makes jOY Different</p>
+                    </div>
+                    <div className="space-y-3">
+                      {[
+                        { icon: Shield, text: "Real event sources • No fake listings" },
+                        { icon: Heart, text: "Built to cure loneliness, not sell ads" },
+                        { icon: Users, text: "Anonymous social matching (opt-in)" },
+                        { icon: Zap, text: "Smart filters: Price, Energy, Indoor/Outdoor" },
+                        { icon: CalendarPlus, text: "48h trip planner for visitors" },
+                        { icon: Bell, text: "Notification intents (not spam)" },
+                        { icon: TrendingUp, text: "Live event counts & Hot Meter" },
+                        { icon: Gift, text: "Free events highlighted" },
+                        { icon: MapPin, text: "3 cities: Brisbane, Gold Coast, Sunshine Coast" },
+                        { icon: Compass, text: "Discovery-first design • Always more to explore" },
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex items-start gap-3 bg-black/30 border border-white/10 rounded-xl p-4">
+                          <item.icon className="w-5 h-5 text-fuchsia-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-slate-300 leading-relaxed">{item.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 bg-slate-950/95 backdrop-blur-xl border-t border-white/10 p-6">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="w-full bg-white text-black py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-slate-100 transition-colors"
+              >
+                Close
               </button>
             </div>
-            <p className="text-sm text-slate-400">More features coming soon. Stay tuned.</p>
-            <button onClick={() => setShowSettings(false)} className="w-full bg-white text-black py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs">
-              Close
-            </button>
           </div>
         </div>
       )}
