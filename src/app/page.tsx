@@ -550,10 +550,10 @@ export default function Home() {
               <div className="flex flex-wrap gap-2">
                 {([
                   { id: "ANY", label: "All", count: monthCount },
-                  { id: "NOW", label: "Now" },
+                  { id: "NOW", label: "Now", count: 0 },
                   { id: "TONIGHT", label: "Tonight", count: tonightCount },
-                  { id: "WEEKEND", label: "Weekend" },
-                  { id: "NEXT_30", label: "Next 30 Days" },
+                  { id: "WEEKEND", label: "Weekend", count: 0 },
+                  { id: "NEXT_30", label: "Next 30 Days", count: 0 },
                 ] as const).map((pulse) => (
                   <button
                     key={pulse.id}
@@ -882,7 +882,7 @@ export default function Home() {
                         {tripPlan.map((stop, idx) => (
                           <p key={idx} className="text-sm text-slate-300 bg-black/30 border border-white/10 rounded-xl p-3">
                             {stop}
-                          </p>\
+                          </p>
                         ))}
                       </div>
                     )}
