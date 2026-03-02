@@ -374,13 +374,13 @@ export default function Home() {
           className="hidden lg:block absolute inset-0 rounded-[60px] pointer-events-none"
           style={{
             boxShadow: `
-              0 0 0 1px rgba(255,255,255,0.1),
-              0 0 40px rgba(59,130,246,0.3),
-              0 0 80px rgba(139,92,246,0.2),
-              0 0 0 12px #1f1f1f,
-              0 0 0 14px #2d2d2d,
-              0 0 0 16px #1a1a1a,
-              0 0 120px rgba(0,0,0,0.9),
+              0 0 0 1px rgba(255,255,255,0.05),
+              0 0 50px rgba(59,130,246,0.4),
+              0 0 100px rgba(139,92,246,0.3),
+              0 0 0 12px #121212,
+              0 0 0 14px #222222,
+              0 0 0 16px #0a0a0a,
+              0 0 150px rgba(0,0,0,1),
               inset 0 0 0 2px rgba(255,255,255,0.05)
             `,
             background: 'transparent'
@@ -392,20 +392,20 @@ export default function Home() {
             style={{ boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.05)' }}
           />
           
-          {/* Volume Buttons (Left) */}
-          <div className="absolute left-[-18px] top-[180px] w-[6px] h-[35px] rounded-l-md shadow-lg" 
-               style={{ background: 'linear-gradient(to right, #2d2d2d, #1a1a1a)' }} 
+          {/* Volume Buttons (Left) - Substantial scale */}
+          <div className="absolute left-[-22px] top-[180px] w-[8px] h-[50px] rounded-l-lg shadow-2xl" 
+               style={{ background: 'linear-gradient(to right, #222222, #0a0a0a)', border: '1px solid #333' }} 
           />
-          <div className="absolute left-[-18px] top-[225px] w-[6px] h-[35px] rounded-l-md shadow-lg" 
-               style={{ background: 'linear-gradient(to right, #2d2d2d, #1a1a1a)' }} 
+          <div className="absolute left-[-22px] top-[250px] w-[8px] h-[70px] rounded-l-lg shadow-2xl" 
+               style={{ background: 'linear-gradient(to right, #222222, #0a0a0a)', border: '1px solid #333' }} 
           />
-          <div className="absolute left-[-18px] top-[270px] w-[6px] h-[70px] rounded-l-md shadow-lg" 
-               style={{ background: 'linear-gradient(to right, #2d2d2d, #1a1a1a)' }} 
+          <div className="absolute left-[-22px] top-[340px] w-[8px] h-[70px] rounded-l-lg shadow-2xl" 
+               style={{ background: 'linear-gradient(to right, #222222, #0a0a0a)', border: '1px solid #333' }} 
           />
           
-          {/* Power Button (Right) */}
-          <div className="absolute right-[-18px] top-[220px] w-[6px] h-[90px] rounded-r-md shadow-lg" 
-               style={{ background: 'linear-gradient(to left, #2d2d2d, #1a1a1a)' }} 
+          {/* Power Button (Right) - Substantial scale */}
+          <div className="absolute right-[-22px] top-[260px] w-[8px] h-[120px] rounded-r-lg shadow-2xl" 
+               style={{ background: 'linear-gradient(to left, #222222, #0a0a0a)', border: '1px solid #333' }} 
           />
         </div>
 
