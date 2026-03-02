@@ -374,8 +374,8 @@ export default function Home() {
       />
 
       {/* POV Frame Wrapper (Desktop Only) */}
-      <div className="relative z-10 w-full flex flex-col items-center md:pt-4 md:pb-8">
-        <div className="relative w-full max-w-[1200px] min-h-screen bg-black/90 md:border-[12px] border-black/40 md:rounded-[4rem] md:shadow-[0_0_100px_rgba(0,0,0,0.8),0_0_40px_rgba(255,255,255,0.05)] md:ring-1 ring-white/10 flex flex-col overflow-hidden">
+      <div className="relative z-10 w-full flex flex-col items-center md:pt-8 md:pb-12">
+        <div className="relative w-full max-w-[420px] min-h-screen bg-black md:border-[16px] border-slate-900 md:rounded-[3.5rem] md:shadow-[0_0_120px_rgba(0,0,0,0.9),0_0_60px_rgba(255,255,255,0.08),inset_0_0_40px_rgba(0,0,0,0.5)] md:ring-2 ring-slate-800/50 flex flex-col overflow-hidden">
           
           {/* Top Bezel / Sensor Housing (Desktop Only) */}
           <div className="hidden md:block absolute top-0 left-1/2 -translate-x-1/2 w-40 h-8 bg-black/40 rounded-b-3xl z-[110] backdrop-blur-md border-x border-b border-white/5">
