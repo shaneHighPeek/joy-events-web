@@ -368,46 +368,49 @@ export default function Home() {
       />
 
       {/* iPhone Frame Wrapper - wraps the content with phone styling */}
-      <div className="relative z-10 w-full max-w-[1200px] min-h-screen flex flex-col">
+      <div className="relative z-10 w-full max-w-[1240px] min-h-screen flex flex-col mt-2">
         {/* Black Titanium Frame (Desktop Only) - Decorative border around content */}
         <div 
-          className="hidden lg:block absolute inset-0 rounded-[55px] pointer-events-none"
+          className="hidden lg:block absolute inset-0 rounded-[60px] pointer-events-none"
           style={{
             boxShadow: `
-              0 0 0 20px #1f1f1f,
-              0 0 0 22px #2d2d2d,
-              0 0 0 24px #1a1a1a,
-              0 0 100px rgba(0,0,0,0.9),
-              inset 0 0 0 2px rgba(255,255,255,0.03)
+              0 0 0 1px rgba(255,255,255,0.1),
+              0 0 40px rgba(59,130,246,0.3),
+              0 0 80px rgba(139,92,246,0.2),
+              0 0 0 12px #1f1f1f,
+              0 0 0 14px #2d2d2d,
+              0 0 0 16px #1a1a1a,
+              0 0 120px rgba(0,0,0,0.9),
+              inset 0 0 0 2px rgba(255,255,255,0.05)
             `,
-            background: 'linear-gradient(145deg, rgba(42,42,42,0.3) 0%, rgba(31,31,31,0.3) 50%, rgba(42,42,42,0.3) 100%)'
+            background: 'transparent'
           }}
         >
           {/* Dynamic Island at Top */}
           <div 
-            className="absolute top-[16px] left-1/2 -translate-x-1/2 w-[140px] h-[40px] bg-black rounded-full z-10"
+            className="absolute top-[20px] left-1/2 -translate-x-1/2 w-[140px] h-[40px] bg-black rounded-full z-10"
             style={{ boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.05)' }}
           />
           
           {/* Volume Buttons (Left) */}
-          <div className="absolute left-[-22px] top-[180px] w-[4px] h-[35px] rounded-l-md" 
-               style={{ background: 'linear-gradient(to right, #1a1a1a, #2d2d2d)' }} 
+          <div className="absolute left-[-18px] top-[180px] w-[6px] h-[35px] rounded-l-md shadow-lg" 
+               style={{ background: 'linear-gradient(to right, #2d2d2d, #1a1a1a)' }} 
           />
-          <div className="absolute left-[-22px] top-[225px] w-[4px] h-[35px] rounded-l-md" 
-               style={{ background: 'linear-gradient(to right, #1a1a1a, #2d2d2d)' }} 
+          <div className="absolute left-[-18px] top-[225px] w-[6px] h-[35px] rounded-l-md shadow-lg" 
+               style={{ background: 'linear-gradient(to right, #2d2d2d, #1a1a1a)' }} 
           />
-          <div className="absolute left-[-22px] top-[270px] w-[4px] h-[70px] rounded-l-md" 
-               style={{ background: 'linear-gradient(to right, #1a1a1a, #2d2d2d)' }} 
+          <div className="absolute left-[-18px] top-[270px] w-[6px] h-[70px] rounded-l-md shadow-lg" 
+               style={{ background: 'linear-gradient(to right, #2d2d2d, #1a1a1a)' }} 
           />
           
           {/* Power Button (Right) */}
-          <div className="absolute right-[-22px] top-[220px] w-[4px] h-[90px] rounded-r-md" 
-               style={{ background: 'linear-gradient(to left, #1a1a1a, #2d2d2d)' }} 
+          <div className="absolute right-[-18px] top-[220px] w-[6px] h-[90px] rounded-r-md shadow-lg" 
+               style={{ background: 'linear-gradient(to left, #2d2d2d, #1a1a1a)' }} 
           />
         </div>
 
         {/* Actual Content Container */}
-        <div className="relative z-20 w-full min-h-screen bg-black/90 md:border-x border-white/10 flex flex-col lg:rounded-[50px] overflow-hidden">
+        <div className="relative z-20 w-full min-h-screen bg-black/90 flex flex-col lg:rounded-[55px] overflow-hidden">
         {/* Header */}
         <div className="h-20 bg-black/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 sticky top-0 z-[100]">
           <div className="flex items-center gap-3">
