@@ -74,19 +74,19 @@ export async function GET(request: Request) {
           }
 
           return {
-            id: `h-${index}`,
+            id: e.id || `h-${index}`,
             title: rawTitle,
             date: rawDate,
             venue: rawVenue,
             hero: e.image || e.hero || getPlaceholderImage(vibe),
             link: e.link || '#',
             source: e.source || 'Vacuum',
-            updatedLabel: 'Verified',
-            priceBand: 'TBC',
-            energy: 'MEDIUM',
-            indoor: 'ANY',
-            distanceKm: 0,
-            hotScore: 50
+            updatedLabel: e.updatedLabel || 'Verified',
+            priceBand: e.priceBand || 'TBC',
+            energy: e.energy || 'MEDIUM',
+            indoor: e.indoor || 'ANY',
+            distanceKm: e.distanceKm || 0,
+            hotScore: e.hotScore || 50
           };
         });
 
