@@ -34,7 +34,7 @@ import {
   AlignLeft,
 } from "lucide-react";
 
-type Vibe = "DEFAULT" | "SPORTS" | "MUSIC" | "CHILL";
+type Vibe = "ALL" | "SPORTS" | "MUSIC" | "CHILL";
 type Location = "BRISBANE" | "GC" | "SC";
 type PriceBand = "ANY" | "FREE" | "$" | "$$" | "$$$";
 type Energy = "ANY" | "LOW" | "MEDIUM" | "HIGH";
@@ -57,10 +57,10 @@ interface Event {
   hotScore: number;
 }
 
-const vibeList: Vibe[] = ["DEFAULT", "SPORTS", "MUSIC", "CHILL"];
+const vibeList: Vibe[] = ["ALL", "SPORTS", "MUSIC", "CHILL"];
 
 const themes: Record<Vibe, { outsideBg: string; accent: string; visual: string; description: string }> = {
-  DEFAULT: {
+  ALL: {
     outsideBg: "bg-slate-950",
     accent: "text-blue-400",
     visual: 'url("https://images.unsplash.com/photo-1518173946687-a4c8a9ba332f?auto=format&fit=crop&q=80&w=2000")',
@@ -127,7 +127,7 @@ function getIndoorLabel(mode: IndoorMode) {
 }
 
 export default function Home() {
-  const [vibe, setVibe] = useState<Vibe>("DEFAULT");
+  const [vibe, setVibe] = useState<Vibe>("ALL");
   const [location, setLocation] = useState<Location | null>(null);
   const [showEvents, setShowEvents] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
@@ -158,7 +158,7 @@ export default function Home() {
 
   // Trip Planner
   const [tripRegion, setTripRegion] = useState<Location>("BRISBANE");
-  const [tripVibe, setTripVibe] = useState<Vibe>("DEFAULT");
+  const [tripVibe, setTripVibe] = useState<Vibe>("ALL");
   const [tripPlan, setTripPlan] = useState<string[]>([]);
   const [tripLoading, setTripLoading] = useState(false);
 
@@ -364,11 +364,11 @@ export default function Home() {
     <main className={`min-h-screen transition-all duration-1000 flex flex-col items-center relative ${current.outsideBg}`}>
       <div
         className="fixed inset-0 z-0 opacity-50 transition-all duration-1000"
-        style={{ backgroundImage: current.visual, backgroundSize: "cover", backgroundPosition: "center", filter: "brightness(0.4)" }}
+        style={{ backgroundImage: current.visual, backgroundSize: "cover", backgroundPosition: "center", filter: "brightness(0.6)" }}
       />
 
       {/* iPhone Frame Wrapper - wraps the content with phone styling */}
-      <div className="relative z-10 w-full max-w-[1240px] min-h-screen flex flex-col mt-2">
+      <div className="relative z-10 w-full max-w-[1200px] min-h-screen flex flex-col mt-2">
         {/* Black Titanium Frame (Desktop Only) - Decorative border around content */}
         <div 
           className="hidden lg:block absolute inset-0 rounded-[60px] pointer-events-none"
@@ -413,7 +413,7 @@ export default function Home() {
         <div className="relative z-20 w-full min-h-screen bg-black/90 flex flex-col lg:rounded-[55px] overflow-hidden">
         {/* Header */}
         <div className="h-20 bg-black/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 sticky top-0 z-[100]">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setShowEvents(false)}>
             <h1 className="text-3xl font-black italic tracking-tighter text-white">jOY</h1>
             <span className={`text-[8px] font-black uppercase tracking-[0.25em] ${current.accent}`}>Events</span>
           </div>
@@ -533,14 +533,14 @@ export default function Home() {
           <div className="flex-1 flex flex-col">
             {/* The Invitation (Hero POV) */}
             {featuredEvent && (
-              <div className="relative h-[50vh] md:h-[60vh] w-full overflow-hidden border-b border-white/10">
+              <div className="relative h-[60vh] md:h-[70vh] w-full overflow-hidden border-b border-white/10">
                 <div
                   className="absolute inset-0 bg-cover bg-center"
                   style={{ backgroundImage: `url(${featuredEvent.hero})` }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" />
                 
-                <div className="relative h-full flex flex-col justify-end p-6 md:p-12 max-w-4xl">
+                <div className="relative h-full flex flex-col justify-end p-6 md:p-12 md:pb-16 max-w-4xl pt-24 md:pt-32">
                   {/* Badge */}
                   <div className="flex items-center gap-3 mb-4">
                     <span className="bg-emerald-500 border border-emerald-400 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-full tracking-widest flex items-center gap-2">
