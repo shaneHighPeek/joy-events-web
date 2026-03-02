@@ -367,7 +367,8 @@ export default function Home() {
   );
 
   return (
-    <main className={`min-h-screen transition-all duration-1000 flex flex-col items-center relative ${current.outsideBg}`}>
+    <>
+      <main className={`min-h-screen transition-all duration-1000 flex flex-col items-center relative ${current.outsideBg}`}>
       <div
         className="fixed inset-0 z-0 opacity-50 transition-all duration-1000"
         style={{ backgroundImage: current.visual, backgroundSize: "cover", backgroundPosition: "center", filter: "brightness(0.4)" }}
@@ -385,9 +386,8 @@ export default function Home() {
 
       {/* Main Content Container */}
       <div className="relative z-10 w-full min-h-screen flex flex-col">
-
-          {/* Header */}
-          <div className="h-20 bg-black/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 sticky top-0 z-[100]">
+        {/* Header */}
+        <div className="h-20 bg-black/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 sticky top-0 z-[100]">
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black italic tracking-tighter text-white cursor-pointer" onClick={() => setShowEvents(false)}>jOY</h1>
               <span className={`text-[8px] font-black uppercase tracking-[0.25em] ${current.accent}`}>Events</span>
@@ -777,7 +777,7 @@ export default function Home() {
             )}
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Settings Hub */}
       {showSettings && (
@@ -1040,6 +1040,6 @@ export default function Home() {
           </div>
         </div>
       )}
-    </main>
+    </>
   );
 }
