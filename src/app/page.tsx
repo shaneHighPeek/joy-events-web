@@ -375,8 +375,6 @@ export default function Home() {
           style={{
             boxShadow: `
               0 0 0 1px rgba(255,255,255,0.05),
-              0 0 50px rgba(59,130,246,0.3),
-              0 0 100px rgba(139,92,246,0.2),
               0 0 0 12px #181818,
               0 0 0 14px #222222,
               0 0 0 16px #101010,
