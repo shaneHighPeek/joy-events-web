@@ -186,6 +186,29 @@ export default function Home() {
     if (data) setSavedEventIds(data.map((r) => r.event_id));
   };
 
+  const logEventClick = async (event: Event) => {
+    if (!supabase) return;
+    
+    const clickData = {
+      event_id: event.id,
+      event_title: event.title,
+      event_link: event.link,
+      user_id: userId,
+      location: location,
+      vibe: vibe,
+      source: event.source,
+      user_agent: navigator.userAgent,
+      referrer: document.referrer
+    };
+
+    try {
+      const { error } = await supabase.from("event_clicks").insert(clickData);
+      if (error) console.error("Click log failed:", error);
+    } catch (e) {
+      console.error("Click log error:", e);
+    }
+  };
+
   const fetchEvents = async (selectedVibe: Vibe, selectedLocation: Location) => {
     setLoading(true);
     try {
@@ -299,6 +322,44 @@ export default function Home() {
     setNotifyTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
   };
 
+  const AppFooter = () => (
+    <footer className="w-full mt-20 border-t border-white/10 pt-12 pb-24 px-6 md:px-12 text-slate-400">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
+        <div className="space-y-4">
+          <h4 className="text-xl font-black italic uppercase tracking-tighter text-white">jOY EVENTS</h4>
+          <p className="text-sm leading-relaxed max-w-sm">
+            Service-first event discovery for Brisbane, Gold Coast, and Sunshine Coast. Built for belonging, not ad inventory.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-white">Legal</p>
+            <nav className="flex flex-col gap-3 text-xs">
+              <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <span className="hover:text-white cursor-pointer transition-colors">Data Policy</span>
+            </nav>
+          </div>
+          <div className="space-y-4">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-white">Trust</p>
+            <div className="space-y-2 text-[10px] leading-relaxed">
+              <p><span className="font-black text-slate-300">Disclaimer:</span> Event times and availability can change. Verify before travel.</p>
+              <p><span className="font-black text-slate-300">Sources:</span> Council Open Data, Ticketmaster API, Community Input.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-6xl mx-auto mt-12 pt-8 border-t border-white/5 text-[10px] uppercase tracking-widest text-slate-600 font-bold flex justify-between items-center">
+        <span>© 2026 jOY Discovery Engine</span>
+        <div className="flex gap-4">
+          <span>Brisbane</span>
+          <span>Gold Coast</span>
+          <span>Sunshine Coast</span>
+        </div>
+      </div>
+    </footer>
+  );
+
   return (
     <main className={`min-h-screen transition-all duration-1000 flex flex-col items-center relative ${current.outsideBg}`}>
       <div
@@ -313,7 +374,7 @@ export default function Home() {
             <h1 className="text-3xl font-black italic tracking-tighter text-white">jOY</h1>
             <span className={`text-[8px] font-black uppercase tracking-[0.25em] ${current.accent}`}>Events</span>
           </div>
-          <div className="hidden md:flex gap-6">
+          <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar">
             {vibeList.map((v) => (
               <button
                 key={v}
@@ -321,7 +382,7 @@ export default function Home() {
                   setVibe(v);
                   if (location) fetchEvents(v, location);
                 }}
-                className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                className={`text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${
                   vibe === v ? "text-white underline underline-offset-8 decoration-2" : "text-white/30 hover:text-white/70"
                 }`}
               >
@@ -420,6 +481,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
+            <AppFooter />
           </div>
         )}
 
@@ -477,6 +539,7 @@ export default function Home() {
                     <a
                       href={featuredEvent.link}
                       target="_blank"
+                      onClick={() => logEventClick(featuredEvent)}
                       className="bg-white text-black px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all flex items-center justify-center gap-2 shadow-2xl"
                     >
                       <Check className="w-5 h-5" />
@@ -677,6 +740,7 @@ export default function Home() {
                           <a
                             href={e.link}
                             target="_blank"
+                            onClick={() => logEventClick(e)}
                             className="flex-1 bg-black text-white text-[10px] font-black uppercase tracking-[0.12em] py-2.5 rounded-xl text-center hover:bg-slate-800 transition-colors"
                           >
                             Details
@@ -708,6 +772,7 @@ export default function Home() {
                 ← Back to Cities
               </button>
             </div>
+            <AppFooter />
           </div>
         )}
       </div>
