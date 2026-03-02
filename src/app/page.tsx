@@ -654,9 +654,9 @@ export default function Home() {
               <div className="flex flex-wrap gap-2">
                 {([
                   { id: "ANY", label: "All", count: monthCount },
-                  { id: "NOW", label: "Now", count: 0 },
+                  { id: "NOW", label: "Now", count: events.filter((e) => /today|now/i.test(e.date)).length },
                   { id: "TONIGHT", label: "Tonight", count: tonightCount },
-                  { id: "WEEKEND", label: "Weekend", count: 0 },
+                  { id: "WEEKEND", label: "Weekend", count: events.filter((e) => /sat|sun|weekend/i.test(e.date)).length },
                   { id: "NEXT_30", label: "Next 30 Days", count: 0 },
                 ] as const).map((pulse) => (
                   <button
@@ -667,8 +667,8 @@ export default function Home() {
                     }`}
                   >
                     {pulse.label}
-                    {pulse.count && pulse.count > 0 && (
-                      <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[8px] font-black ${pulseWindow === pulse.id ? "bg-black text-white" : "bg-white/10 text-white"}`}>
+                    {pulseWindow === pulse.id && pulse.count > 0 && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-black text-white">
                         {pulse.count}
                       </span>
                     )}
