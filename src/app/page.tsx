@@ -373,14 +373,18 @@ export default function Home() {
         style={{ backgroundImage: current.visual, backgroundSize: "cover", backgroundPosition: "center", filter: "brightness(0.4)" }}
       />
 
-      {/* POV Frame Wrapper (Desktop Only) */}
-      <div className="relative z-10 w-full flex flex-col items-center md:pt-8 md:pb-12">
-        <div className="relative w-full max-w-[420px] min-h-screen bg-black md:border-[16px] border-slate-900 md:rounded-[3.5rem] md:shadow-[0_0_120px_rgba(0,0,0,0.9),0_0_60px_rgba(255,255,255,0.08),inset_0_0_40px_rgba(0,0,0,0.5)] md:ring-2 ring-slate-800/50 flex flex-col overflow-hidden">
-          
-          {/* Top Bezel / Sensor Housing (Desktop Only) */}
-          <div className="hidden md:block absolute top-0 left-1/2 -translate-x-1/2 w-40 h-8 bg-black/40 rounded-b-3xl z-[110] backdrop-blur-md border-x border-b border-white/5">
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/10 rounded-full" />
+      {/* POV Phone Frame Overlay (Desktop Only) - Decorative top bezel */}
+      <div className="hidden md:block fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[1400px] h-32 z-[120] pointer-events-none">
+        <div className="absolute inset-0 rounded-b-[4rem] border-8 border-t-0 border-slate-100 shadow-[0_0_60px_rgba(255,255,255,0.15),inset_0_-20px_40px_rgba(0,0,0,0.3)]" style={{ background: 'linear-gradient(180deg, rgba(248,250,252,0.95) 0%, rgba(248,250,252,0.85) 50%, transparent 100%)' }}>
+          {/* Sensor housing notch */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-48 h-8 bg-black/90 rounded-b-3xl border-x border-b border-slate-800/50">
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-1.5 bg-slate-700/50 rounded-full" />
           </div>
+        </div>
+      </div>
+
+      {/* Main Content Container */}
+      <div className="relative z-10 w-full min-h-screen flex flex-col">
 
           {/* Header */}
           <div className="h-20 bg-black/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 sticky top-0 z-[100]">
