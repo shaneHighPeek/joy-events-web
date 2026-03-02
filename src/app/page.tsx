@@ -32,6 +32,7 @@ import {
   ArrowDown,
   Check,
   AlignLeft,
+  Plus,
 } from "lucide-react";
 
 type Vibe = "ALL" | "SPORTS" | "MUSIC" | "CHILL";
@@ -346,6 +347,15 @@ export default function Home() {
               <p><span className="font-black text-slate-300">Disclaimer:</span> Event times and availability can change. Verify before travel.</p>
               <p><span className="font-black text-slate-300">Sources:</span> Council Open Data, Ticketmaster API, Community Input.</p>
             </div>
+            {userId && (
+              <button
+                onClick={() => setSettingsTab("profile")}
+                className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-emerald-400 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-3 h-3" />
+                Add Your Event
+              </button>
+            )}
           </div>
         </div>
       </div>
