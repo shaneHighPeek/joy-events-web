@@ -16,6 +16,7 @@ export async function sendApprovalEmail(event: {
   date: string;
   description?: string;
   link?: string;
+  image?: string;
   user_email?: string;
 }) {
   if (!postmarkToken) {
@@ -61,6 +62,21 @@ export async function sendApprovalEmail(event: {
 
               <!-- Event Card -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 32px;">
+                ${event.image ? `
+                <tr>
+                  <td style="padding: 0;">
+                    <img src="${event.image}" alt="${event.title}" style="width: 100%; height: auto; display: block; max-height: 300px; object-fit: cover;" />
+                  </td>
+                </tr>
+                ` : `
+                <tr>
+                  <td style="padding: 24px; background-color: #e2e8f0; text-align: center;">
+                    <p style="margin: 0; font-size: 14px; color: #64748b; font-weight: 600;">
+                      📷 No image provided
+                    </p>
+                  </td>
+                </tr>
+                `}
                 <tr>
                   <td style="padding: 24px;">
                     <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a;">
@@ -159,6 +175,7 @@ Venue: ${event.venue}
 Date: ${event.date}
 ${event.description ? `\nDescription: ${event.description}` : ''}
 ${event.link ? `\nWebsite: ${event.link}` : ''}
+${event.image ? `\nImage: ${event.image}` : ''}
 ${event.user_email ? `\nSubmitted by: ${event.user_email}` : ''}
 
 APPROVE THIS EVENT:
