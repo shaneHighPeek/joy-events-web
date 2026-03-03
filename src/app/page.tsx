@@ -359,6 +359,13 @@ export default function Home() {
       
       // Send approval email to admin
       if (data && data.length > 0) {
+        console.log('Sending email notification with data:', {
+          id: data[0].id,
+          title: data[0].title,
+          image: data[0].image,
+          hasImage: !!data[0].image
+        });
+        
         try {
           await fetch('/api/events/notify', {
             method: 'POST',
@@ -549,7 +556,7 @@ export default function Home() {
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setShowEvents(false)}>
             <h1 className="text-3xl font-black italic tracking-tighter text-white">jOY</h1>
             <span className={`text-[8px] font-black uppercase tracking-[0.25em] ${current.accent}`}>Events</span>
-            <div className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[6px] font-black text-emerald-400 uppercase tracking-widest">v2.3.1</div>
+            <div className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[6px] font-black text-emerald-400 uppercase tracking-widest">v2.3.2</div>
           </div>
           <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar">
             {vibeList.map((v) => (

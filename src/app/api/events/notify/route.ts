@@ -6,6 +6,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { event } = body;
 
+    console.log('Notify API received event:', event);
+
     if (!event || !event.id || !event.title) {
       return NextResponse.json({ error: 'Invalid event data' }, { status: 400 });
     }
