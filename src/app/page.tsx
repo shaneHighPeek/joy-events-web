@@ -135,7 +135,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"profile" | "connect" | "plan" | "notify" | "discover">("profile");
+  const [settingsTab, setSettingsTab] = useState<"profile" | "connect" | "plan" | "notify" | "discover" | "submit">("profile");
 
   const [query, setQuery] = useState("");
   const [priceBand, setPriceBand] = useState<PriceBand>("ANY");
@@ -153,6 +153,22 @@ export default function Home() {
   const [authEmail, setAuthEmail] = useState("");
   const [authMessage, setAuthMessage] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  
+  // Event submission form state
+  const [submitTitle, setSubmitTitle] = useState("");
+  const [submitDate, setSubmitDate] = useState("");
+  const [submitTime, setSubmitTime] = useState("");
+  const [submitVenue, setSubmitVenue] = useState("");
+  const [submitCity, setSubmitCity] = useState<Location>("BRISBANE");
+  const [submitDescription, setSubmitDescription] = useState("");
+  const [submitLink, setSubmitLink] = useState("");
+  const [submitVibe, setSubmitVibe] = useState<Vibe>("ALL");
+  const [submitPrice, setSubmitPrice] = useState<PriceBand>("FREE");
+  const [submitIndoor, setSubmitIndoor] = useState<IndoorMode>("ANY");
+  const [submitEnergy, setSubmitEnergy] = useState<Energy>("MEDIUM");
+  const [submitImage, setSubmitImage] = useState("");
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
 
   // Social Connect
   const [socialMatchOptIn, setSocialMatchOptIn] = useState(false);
@@ -281,6 +297,73 @@ export default function Home() {
     setAuthMessage("Signed out.");
   };
 
+  const submitEvent = async () => {
+    if (!supabase || !userId) {
+      setSubmitMessage("Please sign in to submit events.");
+      return;
+    }
+    
+    // Validation
+    if (!submitTitle.trim() || !submitDate || !submitVenue.trim()) {
+      setSubmitMessage("Please fill in all required fields (Event Name, Date, Venue).");
+      return;
+    }
+    
+    setSubmitLoading(true);
+    setSubmitMessage("");
+    
+    try {
+      // Format date string
+      let dateStr = submitDate;
+      if (submitTime) {
+        const dt = new Date(`${submitDate}T${submitTime}`);
+        dateStr = dt.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+      } else {
+        const dt = new Date(submitDate);
+        dateStr = dt.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+      }
+      
+      const { error } = await supabase.from("user_submitted_events").insert({
+        user_id: userId,
+        title: submitTitle.trim(),
+        venue: submitVenue.trim(),
+        date: dateStr,
+        description: submitDescription.trim() || null,
+        link: submitLink.trim() || null,
+        image: submitImage.trim() || null,
+        vibe: submitVibe,
+        price_band: submitPrice,
+        indoor_mode: submitIndoor,
+        energy: submitEnergy,
+        location: submitCity,
+        status: "pending",
+      });
+      
+      if (error) throw error;
+      
+      // Clear form
+      setSubmitTitle("");
+      setSubmitDate("");
+      setSubmitTime("");
+      setSubmitVenue("");
+      setSubmitDescription("");
+      setSubmitLink("");
+      setSubmitImage("");
+      setSubmitVibe("ALL");
+      setSubmitPrice("FREE");
+      setSubmitIndoor("ANY");
+      setSubmitEnergy("MEDIUM");
+      setSubmitCity("BRISBANE");
+      
+      setSubmitMessage("✨ Event submitted! We'll review it and add it to the feed soon.");
+    } catch (error: any) {
+      console.error("Event submission failed:", error);
+      setSubmitMessage(`Submission failed: ${error.message || "Unknown error"}`);
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
   const generateTripPlan = async () => {
     setTripLoading(true);
     try {
@@ -350,7 +433,7 @@ export default function Home() {
             <button
               onClick={() => {
                 setShowSettings(true);
-                setSettingsTab("profile");
+                setSettingsTab("submit");
               }}
               className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-emerald-400 transition-colors flex items-center gap-2"
             >
@@ -425,7 +508,7 @@ export default function Home() {
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setShowEvents(false)}>
             <h1 className="text-3xl font-black italic tracking-tighter text-white">jOY</h1>
             <span className={`text-[8px] font-black uppercase tracking-[0.25em] ${current.accent}`}>Events</span>
-            <div className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[6px] font-black text-emerald-400 uppercase tracking-widest">v2.0.6</div>
+            <div className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[6px] font-black text-emerald-400 uppercase tracking-widest">v2.1.0</div>
           </div>
           <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar">
             {vibeList.map((v) => (
@@ -849,6 +932,7 @@ export default function Home() {
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {[
                   { id: "profile", label: "Profile", icon: UserPlus },
+                  { id: "submit", label: "Add Event", icon: Plus },
                   { id: "connect", label: "Connect", icon: Users },
                   { id: "plan", label: "Trip Plan", icon: Plane },
                   { id: "notify", label: "Alerts", icon: Bell },
@@ -1046,6 +1130,176 @@ export default function Home() {
                     </button>
                     {notifyMessage && <p className="text-xs text-slate-400">{notifyMessage}</p>}
                   </div>
+                </div>
+              )}
+
+              {/* Submit Event */}
+              {settingsTab === "submit" && (
+                <div className="space-y-4">
+                  {!userId ? (
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Plus className="w-5 h-5 text-emerald-400" />
+                        <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Sign In Required</p>
+                      </div>
+                      <p className="text-sm text-slate-300">Create a free account to submit events and help the community discover more jOY.</p>
+                      <button
+                        onClick={() => setSettingsTab("profile")}
+                        className="w-full bg-emerald-500 text-black py-3 rounded-xl font-black uppercase tracking-[0.15em] text-xs hover:bg-emerald-400 transition-colors"
+                      >
+                        Go to Profile Tab
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Plus className="w-5 h-5 text-emerald-400" />
+                        <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Add Your Event</p>
+                      </div>
+                      <p className="text-xs text-slate-400 leading-relaxed">Help others discover amazing experiences. Your submission will be reviewed and added to the feed.</p>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Event Name *</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Summer Music Festival"
+                            value={submitTitle}
+                            onChange={(e) => setSubmitTitle(e.target.value)}
+                            className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white placeholder:text-slate-600"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Date *</label>
+                            <input
+                              type="date"
+                              className="w-full bg-slate-900
+                              value={submitDate}
+                              onChange={(e) => setSubmitDate(e.target.value)} border border-white/20 rounded-xl p-3 text-sm text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Time</label>
+                            <input
+                              type="time"
+                              className="w-full bg-slate-900
+                              value={submitTime}
+                              onChange={(e) => setSubmitTime(e.target.value)} border border-white/20 rounded-xl p-3 text-sm text-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Venue / Location *</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., South Bank, Brisbane"
+                            value={submitVenue}
+                            onChange={(e) => setSubmitVenue(e.target.value)}
+                            className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white placeholder:text-slate-600"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">City *</label>
+                          <select value={submitCity} onChange={(e) => setSubmitCity(e.target.value as Location)} className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white">
+                            <option value="BRISBANE">Brisbane</option>
+                            <option value="GC">Gold Coast</option>
+                            <option value="SC">Sunshine Coast</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Description</label>
+                          <textarea
+                            rows={4}
+                            placeholder="What makes this event special?"
+                            className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white placeholder:text-slate-600"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Event Website / Link</label>
+                          <input
+                            type="url"
+                            placeholder="https://..."
+                            className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white placeholder:text-slate-600"
+                            value={submitLink}
+                            onChange={(e) => setSubmitLink(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Vibe</label>
+                            <select value={submitVibe} onChange={(e) => setSubmitVibe(e.target.value as Vibe)} className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white">
+                              <option value="ALL">General</option>
+                              <option value="MUSIC">Music</option>
+                              <option value="SPORTS">Sports</option>
+                              <option value="CHILL">Chill</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Price</label>
+                            <select value={submitPrice} onChange={(e) => setSubmitPrice(e.target.value as PriceBand)} className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white">
+                              <option value="FREE">Free</option>
+                              <option value="$">$ (Under $20)</option>
+                              <option value="$$">$$ ($20-$50)</option>
+                              <option value="$$$">$$$ ($50+)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Environment</label>
+                            <select value={submitIndoor} onChange={(e) => setSubmitIndoor(e.target.value as IndoorMode)} className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white">
+                              <option value="ANY">Not Sure</option>
+                              <option value="INDOOR">Indoor</option>
+                              <option value="OUTDOOR">Outdoor</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Energy</label>
+                            <select value={submitEnergy} onChange={(e) => setSubmitEnergy(e.target.value as Energy)} className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white">
+                              <option value="LOW">Chill / Relaxed</option>
+                              <option value="MEDIUM">Moderate</option>
+                              <option value="HIGH">High Energy</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Image URL (Optional)</label>
+                          <input
+                            type="url"
+                            placeholder="https://..."
+                            className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white placeholder:text-slate-600"
+                            value={submitImage}
+                            onChange={(e) => setSubmitImage(e.target.value)}
+                          />
+                          <p className="text-[10px] text-slate-600 mt-2">Paste a direct link to an event image (JPG, PNG)</p>
+                        </div>
+
+                        <button
+                          className="w-full bg-emerald-500 text-black py-4 rounded-xl font-black uppercase tracking-[0.2em] text-xs hover:bg-emerald-400 transition-colors"
+                        >
+                          Submit Event for Review
+                        </button>
+
+                        {submitMessage && (
+                          <div className={`p-4 rounded-xl text-sm ${submitMessage.includes("✨") ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-300" : "bg-red-500/20 border border-red-500/30 text-red-300"}`}>
+                            {submitMessage}
+                          </div>
+                        )}
+                        <p className="text-[10px] text-slate-600 text-center leading-relaxed">
+                          Your event will be reviewed and typically appears within 24 hours.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
