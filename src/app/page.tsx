@@ -524,7 +524,7 @@ export default function Home() {
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setShowEvents(false)}>
             <h1 className="text-3xl font-black italic tracking-tighter text-white">jOY</h1>
             <span className={`text-[8px] font-black uppercase tracking-[0.25em] ${current.accent}`}>Events</span>
-            <div className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[6px] font-black text-emerald-400 uppercase tracking-widest">v2.1.1</div>
+            <div className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[6px] font-black text-emerald-400 uppercase tracking-widest">v2.1.2</div>
           </div>
           <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar">
             {vibeList.map((v) => (
@@ -1191,18 +1191,18 @@ export default function Home() {
                             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Date *</label>
                             <input
                               type="date"
-                              className="w-full bg-slate-900
                               value={submitDate}
-                              onChange={(e) => setSubmitDate(e.target.value)} border border-white/20 rounded-xl p-3 text-sm text-white"
+                              onChange={(e) => setSubmitDate(e.target.value)}
+                              className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white"
                             />
                           </div>
                           <div>
                             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Time</label>
                             <input
                               type="time"
-                              className="w-full bg-slate-900
                               value={submitTime}
-                              onChange={(e) => setSubmitTime(e.target.value)} border border-white/20 rounded-xl p-3 text-sm text-white"
+                              onChange={(e) => setSubmitTime(e.target.value)}
+                              className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white"
                             />
                           </div>
                         </div>
@@ -1231,6 +1231,8 @@ export default function Home() {
                           <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Description</label>
                           <textarea
                             rows={4}
+                            value={submitDescription}
+                            onChange={(e) => setSubmitDescription(e.target.value)}
                             placeholder="What makes this event special?"
                             className="w-full bg-slate-900 border border-white/20 rounded-xl p-3 text-sm text-white placeholder:text-slate-600"
                           />
