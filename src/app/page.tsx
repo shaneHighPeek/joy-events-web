@@ -298,19 +298,27 @@ export default function Home() {
   };
 
   const submitEvent = async () => {
+    console.log("Submit button clicked!");
+    console.log("Supabase:", !!supabase, "UserId:", userId);
+    
     if (!supabase || !userId) {
-      setSubmitMessage("Please sign in to submit events.");
+      const msg = !supabase ? "Database connection error. Please refresh the page." : "Please sign in to submit events.";
+      setSubmitMessage(msg);
+      console.error("Submission blocked:", { supabase: !!supabase, userId });
       return;
     }
     
     // Validation
+    console.log("Form values:", { submitTitle, submitDate, submitVenue });
     if (!submitTitle.trim() || !submitDate || !submitVenue.trim()) {
       setSubmitMessage("Please fill in all required fields (Event Name, Date, Venue).");
+      console.error("Validation failed");
       return;
     }
     
     setSubmitLoading(true);
     setSubmitMessage("");
+    console.log("Starting submission...");
     
     try {
       // Format date string
@@ -323,7 +331,7 @@ export default function Home() {
         dateStr = dt.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
       }
       
-      const { error } = await supabase.from("user_submitted_events").insert({
+      const payload = {
         user_id: userId,
         title: submitTitle.trim(),
         venue: submitVenue.trim(),
@@ -337,9 +345,17 @@ export default function Home() {
         energy: submitEnergy,
         location: submitCity,
         status: "pending",
-      });
+      };
       
-      if (error) throw error;
+      console.log("Submitting payload:", payload);
+      const { data, error } = await supabase.from("user_submitted_events").insert(payload).select();
+      
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+      
+      console.log("Submission successful:", data);
       
       // Clear form
       setSubmitTitle("");
@@ -508,7 +524,7 @@ export default function Home() {
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setShowEvents(false)}>
             <h1 className="text-3xl font-black italic tracking-tighter text-white">jOY</h1>
             <span className={`text-[8px] font-black uppercase tracking-[0.25em] ${current.accent}`}>Events</span>
-            <div className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[6px] font-black text-emerald-400 uppercase tracking-widest">v2.1.0</div>
+            <div className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[6px] font-black text-emerald-400 uppercase tracking-widest">v2.1.1</div>
           </div>
           <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar">
             {vibeList.map((v) => (
@@ -1284,9 +1300,11 @@ export default function Home() {
                         </div>
 
                         <button
-                          className="w-full bg-emerald-500 text-black py-4 rounded-xl font-black uppercase tracking-[0.2em] text-xs hover:bg-emerald-400 transition-colors"
+                          onClick={submitEvent}
+                          disabled={submitLoading}
+                          className="w-full bg-emerald-500 text-black py-4 rounded-xl font-black uppercase tracking-[0.2em] text-xs hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Submit Event for Review
+                          {submitLoading ? "Submitting..." : "Submit Event for Review"}
                         </button>
 
                         {submitMessage && (
