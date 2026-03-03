@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const ticketmasterApiKey = process.env.TICKETMASTER_API_KEY;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -22,7 +23,19 @@ export async function GET(request: Request) {
       allRawEvents = JSON.parse(fileData);
     }
     
-    // 2. Load approved user-submitted events from Supabase
+    // 2. Load Ticketmaster events at runtime (if API key configured)
+    if (ticketmasterApiKey) {
+      try {
+        const tmEvents = await fetchTicketmasterEvents(ticketmasterApiKey);
+        if (tmEvents.length > 0) {
+          allRawEvents = [...allRawEvents, ...tmEvents];
+        }
+      } catch (err) {
+        console.error('Error fetching Ticketmaster runtime events:', err);
+      }
+    }
+
+    // 3. Load approved user-submitted events from Supabase
     if (supabase) {
       try {
         const { data: userEvents, error } = await supabase
@@ -144,6 +157,72 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({ events: getFallbackData(vibe) });
+}
+
+async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
+  const url = new URL('https://app.ticketmaster.com/discovery/v2/events.json');
+  url.searchParams.set('apikey', apiKey);
+  url.searchParams.set('stateCode', 'QLD');
+  url.searchParams.set('countryCode', 'AU');
+  url.searchParams.set('size', '100');
+  url.searchParams.set('sort', 'date,asc');
+
+  const res = await fetch(url.toString(), { cache: 'no-store' });
+  if (!res.ok) {
+    console.error(`Ticketmaster HTTP ${res.status}`);
+    return [];
+  }
+
+  const data = await res.json();
+  const events = data?._embedded?.events || [];
+
+  const relevantCities = new Set([
+    'BRISBANE', 'GOLD COAST', 'SUNSHINE COAST',
+    'SURFERS PARADISE', 'BROADBEACH', 'ROBINA', 'SOUTHPORT',
+    'COOLANGATTA', 'MAROOCHYDORE', 'NOOSA', 'MOOLOOLABA'
+  ]);
+
+  const mapped = events
+    .filter((e: any) => {
+      const city = (e?._embedded?.venues?.[0]?.city?.name || '').toUpperCase();
+      return relevantCities.has(city);
+    })
+    .map((e: any) => {
+      const venue = e?._embedded?.venues?.[0]?.name || 'Venue TBC';
+      const city = (e?._embedded?.venues?.[0]?.city?.name || '').toUpperCase();
+      const images = e?.images || [];
+      let bestImg = images?.[0]?.url || null;
+      for (const img of images) {
+        if (img?.ratio === '16_9' && (img?.width || 0) >= 1000) {
+          bestImg = img.url;
+          break;
+        }
+      }
+
+      let location = 'BRISBANE';
+      if (['GOLD COAST', 'SURFERS PARADISE', 'BROADBEACH', 'ROBINA', 'SOUTHPORT', 'COOLANGATTA'].includes(city)) {
+        location = 'GC';
+      } else if (['SUNSHINE COAST', 'MAROOCHYDORE', 'NOOSA', 'MOOLOOLABA'].includes(city)) {
+        location = 'SC';
+      }
+
+      return {
+        id: `tm-${e.id}`,
+        title: e?.name || 'Ticketmaster Event',
+        venue,
+        date: e?.dates?.start?.localDate || 'Available Today',
+        vibe: 'MUSIC',
+        source: 'Ticketmaster',
+        link: e?.url || '#',
+        image: bestImg,
+        description: e?.info || '',
+        activitytype: e?.classifications?.[0]?.segment?.name || '',
+        location,
+      };
+    });
+
+  console.log(`Ticketmaster runtime fetched: ${mapped.length}`);
+  return mapped;
 }
 
 function getPlaceholderImage(vibe: string) {
