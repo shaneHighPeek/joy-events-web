@@ -8,8 +8,9 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const ticketmasterApiKey = process.env.TICKETMASTER_API_KEY;
 const eventbriteToken = process.env.EVENTBRITE_TOKEN;
-const eventfindaUser = process.env.EVENTFINDA_USER;
-const eventfindaPassword = process.env.EVENTFINDA_PASSWORD;
+const cleanEnv = (v?: string) => (v || '').trim().replace(/^['"]|['"]$/g, '');
+const eventfindaUser = cleanEnv(process.env.EVENTFINDA_USER);
+const eventfindaPassword = cleanEnv(process.env.EVENTFINDA_PASSWORD);
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
