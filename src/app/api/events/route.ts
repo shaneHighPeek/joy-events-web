@@ -8,6 +8,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const ticketmasterApiKey = process.env.TICKETMASTER_API_KEY;
 const eventbriteToken = process.env.EVENTBRITE_TOKEN;
+const eventfindaUser = process.env.EVENTFINDA_USER;
+const eventfindaPassword = process.env.EVENTFINDA_PASSWORD;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -49,7 +51,19 @@ export async function GET(request: Request) {
       }
     }
 
-    // 4. Load approved user-submitted events from Supabase
+    // 4. Load Eventfinda events at runtime (if API creds configured)
+    if (eventfindaUser && eventfindaPassword) {
+      try {
+        const efEvents = await fetchEventfindaEvents(eventfindaUser, eventfindaPassword);
+        if (efEvents.length > 0) {
+          allRawEvents = [...allRawEvents, ...efEvents];
+        }
+      } catch (err) {
+        console.error('Error fetching Eventfinda runtime events:', err);
+      }
+    }
+
+    // 5. Load approved user-submitted events from Supabase
     if (supabase) {
       try {
         const { data: userEvents, error } = await supabase
@@ -348,6 +362,84 @@ async function fetchEventbriteEvents(token: string): Promise<any[]> {
   }
 
   console.log(`Eventbrite runtime fetched: ${deduped.length}`);
+  return deduped;
+}
+
+async function fetchEventfindaEvents(user: string, password: string): Promise<any[]> {
+  const targets = [
+    { location: 'brisbane', code: 'BRISBANE' },
+    { location: 'gold-coast', code: 'GC' },
+    { location: 'sunshine-coast', code: 'SC' },
+  ];
+
+  const out: any[] = [];
+  const auth = Buffer.from(`${user}:${password}`).toString('base64');
+  const nowIso = new Date().toISOString();
+
+  for (const t of targets) {
+    const url = new URL('https://api.eventfinda.com.au/v2/events.json');
+    url.searchParams.set('location', t.location);
+    url.searchParams.set('rows', '60');
+    url.searchParams.set('fields', 'event:(id,name,url,description,images,datetime_start,location_summary,category),session:(datetime_start),location:(name,summary,address)');
+    url.searchParams.set('order', 'date');
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      console.error(`Eventfinda ${t.location} HTTP ${res.status}`);
+      continue;
+    }
+
+    const data = await res.json();
+    const events = data?.events || [];
+
+    for (const e of events) {
+      const start = e?.datetime_start || e?.session?.datetime_start || '';
+      if (start && start < nowIso) continue;
+      const localDate = start ? String(start).slice(0, 10) : '';
+
+      let image: string | null = null;
+      const imgs = e?.images?.images || e?.images || [];
+      if (Array.isArray(imgs) && imgs.length > 0) {
+        image = imgs[0]?.transforms?.['7']?.url || imgs[0]?.url || null;
+      }
+
+      const title = e?.name || 'Eventfinda Event';
+      const cat = (e?.category?.name || '').toLowerCase();
+      const vibe = /music|concert|gig/.test(cat + ' ' + title.toLowerCase()) ? 'MUSIC' : 'ALL';
+
+      out.push({
+        id: `ef-${e.id}`,
+        title,
+        venue: e?.location_summary || e?.location?.name || t.location,
+        date: localDate || 'Available Today',
+        vibe,
+        source: 'Eventfinda',
+        link: e?.url || '#',
+        image,
+        description: e?.description || '',
+        activitytype: e?.category?.name || '',
+        location: t.code,
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  const deduped: any[] = [];
+  for (const e of out) {
+    const key = `${(e.title || '').toLowerCase()}|${(e.date || '').toUpperCase()}|${(e.venue || '').toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(e);
+  }
+
+  console.log(`Eventfinda runtime fetched: ${deduped.length}`);
   return deduped;
 }
 
