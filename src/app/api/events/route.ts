@@ -215,13 +215,15 @@ function normalizeDate(input: string): string {
   return s;
 }
 
-function classifySeqLocation(text: string): 'BRISBANE' | 'GC' | 'SC' {
+function classifySeqLocation(text: string): 'BRISBANE' | 'GC' | 'SC' | '' {
   const t = (text || '').toUpperCase();
+  const bne = ['BRISBANE', 'FORTITUDE VALLEY', 'SOUTHBANK', 'SOUTH BANK', 'NEW FARM', 'PADDINGTON', 'WEST END', 'MILTON'];
   const gc = ['GOLD COAST', 'SURFERS PARADISE', 'BROADBEACH', 'ROBINA', 'SOUTHPORT', 'COOLANGATTA', 'BURLEIGH', 'TUGUN', 'CARRARA', 'NERANG', 'HELENSVALE', 'COOMERA'];
   const sc = ['SUNSHINE COAST', 'MAROOCHYDORE', 'NOOSA', 'MOOLOOLABA', 'CALOUNDRA', 'BUDERIM', 'NAMBOUR', 'PEREGIAN'];
   if (gc.some(k => t.includes(k))) return 'GC';
   if (sc.some(k => t.includes(k))) return 'SC';
-  return 'BRISBANE';
+  if (bne.some(k => t.includes(k))) return 'BRISBANE';
+  return '';
 }
 
 async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
@@ -366,68 +368,72 @@ async function fetchEventbriteEvents(token: string): Promise<any[]> {
 }
 
 async function fetchEventfindaEvents(user: string, password: string): Promise<any[]> {
-  const targets = [
-    { location: 'brisbane', code: 'BRISBANE' },
-    { location: 'gold-coast', code: 'GC' },
-    { location: 'sunshine-coast', code: 'SC' },
-  ];
-
   const out: any[] = [];
   const auth = Buffer.from(`${user}:${password}`).toString('base64');
   const nowIso = new Date().toISOString();
 
-  for (const t of targets) {
-    const url = new URL('https://api.eventfinda.com.au/v2/events.json');
-    url.searchParams.set('location', t.location);
-    url.searchParams.set('rows', '60');
-    url.searchParams.set('fields', 'event:(id,name,url,description,images,datetime_start,location_summary,category),session:(datetime_start),location:(name,summary,address)');
-    url.searchParams.set('order', 'date');
+  // Pull broad AU feed, then classify to BNE/GC/SC by venue/location text.
+  const url = new URL('https://api.eventfinda.com.au/v2/events.json');
+  url.searchParams.set('rows', '200');
+  url.searchParams.set('order', 'date');
 
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Basic ${auth}`,
-        Accept: 'application/json',
-      },
-      cache: 'no-store',
+  const res = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Basic ${auth}`,
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    console.error(`Eventfinda HTTP ${res.status}`);
+    return [];
+  }
+
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch (e) {
+    console.error('Eventfinda JSON parse failed');
+    return [];
+  }
+
+  const events = data?.events || data?.results || [];
+
+  for (const e of events) {
+    const start = e?.datetime_start || e?.session?.datetime_start || '';
+    if (start && start < nowIso) continue;
+    const localDate = start ? String(start).slice(0, 10) : '';
+
+    const venueText = `${e?.location_summary || ''} ${e?.location?.name || ''} ${e?.location?.summary || ''}`.trim();
+    const locCode = classifySeqLocation(venueText);
+
+    // keep SEQ only
+    if (!locCode) continue;
+
+    let image: string | null = null;
+    const imgs = e?.images?.images || e?.images || [];
+    if (Array.isArray(imgs) && imgs.length > 0) {
+      image = imgs[0]?.transforms?.['7']?.url || imgs[0]?.url || null;
+    }
+
+    const title = e?.name || 'Eventfinda Event';
+    const cat = (e?.category?.name || '').toLowerCase();
+    const vibe = /music|concert|gig/.test(cat + ' ' + title.toLowerCase()) ? 'MUSIC' : 'ALL';
+
+    out.push({
+      id: `ef-${e.id}`,
+      title,
+      venue: e?.location_summary || e?.location?.name || 'Venue TBC',
+      date: localDate || 'Available Today',
+      vibe,
+      source: 'Eventfinda',
+      link: e?.url || '#',
+      image,
+      description: e?.description || '',
+      activitytype: e?.category?.name || '',
+      location: locCode,
     });
-
-    if (!res.ok) {
-      console.error(`Eventfinda ${t.location} HTTP ${res.status}`);
-      continue;
-    }
-
-    const data = await res.json();
-    const events = data?.events || [];
-
-    for (const e of events) {
-      const start = e?.datetime_start || e?.session?.datetime_start || '';
-      if (start && start < nowIso) continue;
-      const localDate = start ? String(start).slice(0, 10) : '';
-
-      let image: string | null = null;
-      const imgs = e?.images?.images || e?.images || [];
-      if (Array.isArray(imgs) && imgs.length > 0) {
-        image = imgs[0]?.transforms?.['7']?.url || imgs[0]?.url || null;
-      }
-
-      const title = e?.name || 'Eventfinda Event';
-      const cat = (e?.category?.name || '').toLowerCase();
-      const vibe = /music|concert|gig/.test(cat + ' ' + title.toLowerCase()) ? 'MUSIC' : 'ALL';
-
-      out.push({
-        id: `ef-${e.id}`,
-        title,
-        venue: e?.location_summary || e?.location?.name || t.location,
-        date: localDate || 'Available Today',
-        vibe,
-        source: 'Eventfinda',
-        link: e?.url || '#',
-        image,
-        description: e?.description || '',
-        activitytype: e?.category?.name || '',
-        location: t.code,
-      });
-    }
   }
 
   const seen = new Set<string>();
