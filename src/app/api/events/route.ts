@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const vibe = searchParams.get('vibe') || 'DEFAULT';
   const locationParam = searchParams.get('location') || 'BRISBANE';
+  const debug = searchParams.get('debug') === '1';
 
   try {
     const dataPath = path.join(process.cwd(), 'src', 'data', 'events.json');
@@ -145,6 +146,8 @@ export async function GET(request: Request) {
            rawDate = `${rawDate.slice(0, 2)} ${rawDate.slice(2, 5)} ${rawDate.slice(5)}`;
         }
 
+        rawDate = normalizeDate(rawDate);
+
         return {
           id: e.id || `h-${index}`,
           title: rawTitle,
@@ -163,6 +166,11 @@ export async function GET(request: Request) {
       });
 
     if (mappedEvents.length > 0) {
+      if (debug) {
+        const bySource: Record<string, number> = {};
+        for (const e of mappedEvents) bySource[e.source] = (bySource[e.source] || 0) + 1;
+        return NextResponse.json({ events: mappedEvents, debug: { bySource } });
+      }
       return NextResponse.json({ events: mappedEvents });
     }
   } catch (error) {
@@ -170,6 +178,36 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({ events: getFallbackData(vibe) });
+}
+
+function normalizeDate(input: string): string {
+  if (!input) return 'Available Today';
+  const s = String(input).trim();
+
+  // yyyy-mm-dd -> DD MON YYYY
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    const mon = dt.toLocaleString('en-AU', { month: 'short', timeZone: 'UTC' }).toUpperCase();
+    return `${String(d).padStart(2, '0')} ${mon} ${y}`;
+  }
+
+  // already DD MON YYYY-ish
+  if (/^\d{2}\s+[A-Za-z]{3}\s+\d{4}$/.test(s)) {
+    const [d, mon, y] = s.split(/\s+/);
+    return `${d.padStart(2, '0')} ${mon.toUpperCase()} ${y}`;
+  }
+
+  return s;
+}
+
+function classifySeqLocation(text: string): 'BRISBANE' | 'GC' | 'SC' {
+  const t = (text || '').toUpperCase();
+  const gc = ['GOLD COAST', 'SURFERS PARADISE', 'BROADBEACH', 'ROBINA', 'SOUTHPORT', 'COOLANGATTA', 'BURLEIGH', 'TUGUN', 'CARRARA', 'NERANG', 'HELENSVALE', 'COOMERA'];
+  const sc = ['SUNSHINE COAST', 'MAROOCHYDORE', 'NOOSA', 'MOOLOOLABA', 'CALOUNDRA', 'BUDERIM', 'NAMBOUR', 'PEREGIAN'];
+  if (gc.some(k => t.includes(k))) return 'GC';
+  if (sc.some(k => t.includes(k))) return 'SC';
+  return 'BRISBANE';
 }
 
 async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
@@ -189,20 +227,17 @@ async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
   const data = await res.json();
   const events = data?._embedded?.events || [];
 
-  const relevantCities = new Set([
-    'BRISBANE', 'GOLD COAST', 'SUNSHINE COAST',
-    'SURFERS PARADISE', 'BROADBEACH', 'ROBINA', 'SOUTHPORT',
-    'COOLANGATTA', 'MAROOCHYDORE', 'NOOSA', 'MOOLOOLABA'
-  ]);
-
   const mapped = events
-    .filter((e: any) => {
-      const city = (e?._embedded?.venues?.[0]?.city?.name || '').toUpperCase();
-      return relevantCities.has(city);
-    })
     .map((e: any) => {
-      const venue = e?._embedded?.venues?.[0]?.name || 'Venue TBC';
-      const city = (e?._embedded?.venues?.[0]?.city?.name || '').toUpperCase();
+      const venueObj = e?._embedded?.venues?.[0] || {};
+      const venue = venueObj?.name || 'Venue TBC';
+      const city = (venueObj?.city?.name || '').toUpperCase();
+      const state = (venueObj?.state?.stateCode || '').toUpperCase();
+      const address = `${venueObj?.address?.line1 || ''} ${venueObj?.country?.name || ''}`;
+      const seqText = `${city} ${venue} ${address}`;
+
+      // keep to QLD only
+      if (state && state !== 'QLD') return null;
       const images = e?.images || [];
       let bestImg = images?.[0]?.url || null;
       for (const img of images) {
@@ -212,18 +247,17 @@ async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
         }
       }
 
-      let location = 'BRISBANE';
-      if (['GOLD COAST', 'SURFERS PARADISE', 'BROADBEACH', 'ROBINA', 'SOUTHPORT', 'COOLANGATTA'].includes(city)) {
-        location = 'GC';
-      } else if (['SUNSHINE COAST', 'MAROOCHYDORE', 'NOOSA', 'MOOLOOLABA'].includes(city)) {
-        location = 'SC';
-      }
+      const location = classifySeqLocation(seqText);
+
+      const localDate = e?.dates?.start?.localDate || '';
+      const todayIso = new Date().toISOString().slice(0, 10);
+      if (localDate && /^\d{4}-\d{2}-\d{2}$/.test(localDate) && localDate < todayIso) return null;
 
       return {
         id: `tm-${e.id}`,
         title: e?.name || 'Ticketmaster Event',
         venue,
-        date: e?.dates?.start?.localDate || 'Available Today',
+        date: localDate || 'Available Today',
         vibe: 'MUSIC',
         source: 'Ticketmaster',
         link: e?.url || '#',
@@ -232,7 +266,8 @@ async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
         activitytype: e?.classifications?.[0]?.segment?.name || '',
         location,
       };
-    });
+    })
+    .filter(Boolean) as any[];
 
   console.log(`Ticketmaster runtime fetched: ${mapped.length}`);
   return mapped;
@@ -250,12 +285,17 @@ async function fetchEventbriteEvents(token: string): Promise<any[]> {
   for (const t of targets) {
     const url = new URL('https://www.eventbriteapi.com/v3/events/search/');
     url.searchParams.set('location.address', t.city);
-    url.searchParams.set('location.within', '50km');
+    url.searchParams.set('location.within', '60km');
     url.searchParams.set('expand', 'venue');
+    url.searchParams.set('sort_by', 'date');
+    url.searchParams.set('start_date.range_start', new Date().toISOString());
+    // some Eventbrite tokens still accept token query param
+    url.searchParams.set('token', token);
 
     const res = await fetch(url.toString(), {
       headers: {
         Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
       },
       cache: 'no-store',
     });
@@ -270,14 +310,16 @@ async function fetchEventbriteEvents(token: string): Promise<any[]> {
 
     for (const e of events) {
       const status = (e?.status || '').toLowerCase();
-      if (status && status !== 'live') continue;
+      if (status && !['live', 'started'].includes(status)) continue;
 
       const startLocal = e?.start?.local || '';
-      const localDate = startLocal ? startLocal.slice(0, 10) : 'Available Today';
+      const localDate = startLocal ? startLocal.slice(0, 10) : '';
+      const todayIso = new Date().toISOString().slice(0, 10);
+      if (localDate && /^\d{4}-\d{2}-\d{2}$/.test(localDate) && localDate < todayIso) continue;
       const date = /^\d{4}-\d{2}-\d{2}$/.test(localDate) ? localDate : 'Available Today';
 
       const venueName = e?.venue?.name || e?.venue?.address?.localized_address_display || t.city;
-      const image = e?.logo?.original?.url || null;
+      const image = e?.logo?.original?.url || e?.logo?.url || null;
 
       mapped.push({
         id: `eb-${e.id}`,
