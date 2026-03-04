@@ -7,6 +7,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const ticketmasterApiKey = process.env.TICKETMASTER_API_KEY;
+const eventbriteToken = process.env.EVENTBRITE_TOKEN;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -35,7 +36,19 @@ export async function GET(request: Request) {
       }
     }
 
-    // 3. Load approved user-submitted events from Supabase
+    // 3. Load Eventbrite events at runtime (if token configured)
+    if (eventbriteToken) {
+      try {
+        const ebEvents = await fetchEventbriteEvents(eventbriteToken);
+        if (ebEvents.length > 0) {
+          allRawEvents = [...allRawEvents, ...ebEvents];
+        }
+      } catch (err) {
+        console.error('Error fetching Eventbrite runtime events:', err);
+      }
+    }
+
+    // 4. Load approved user-submitted events from Supabase
     if (supabase) {
       try {
         const { data: userEvents, error } = await supabase
@@ -223,6 +236,77 @@ async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
 
   console.log(`Ticketmaster runtime fetched: ${mapped.length}`);
   return mapped;
+}
+
+async function fetchEventbriteEvents(token: string): Promise<any[]> {
+  const targets = [
+    { city: 'Brisbane', location: 'BRISBANE' },
+    { city: 'Gold Coast', location: 'GC' },
+    { city: 'Sunshine Coast', location: 'SC' },
+  ];
+
+  const mapped: any[] = [];
+
+  for (const t of targets) {
+    const url = new URL('https://www.eventbriteapi.com/v3/events/search/');
+    url.searchParams.set('location.address', t.city);
+    url.searchParams.set('location.within', '50km');
+    url.searchParams.set('expand', 'venue');
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      console.error(`Eventbrite ${t.city} HTTP ${res.status}`);
+      continue;
+    }
+
+    const data = await res.json();
+    const events = data?.events || [];
+
+    for (const e of events) {
+      const status = (e?.status || '').toLowerCase();
+      if (status && status !== 'live') continue;
+
+      const startLocal = e?.start?.local || '';
+      const localDate = startLocal ? startLocal.slice(0, 10) : 'Available Today';
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(localDate) ? localDate : 'Available Today';
+
+      const venueName = e?.venue?.name || e?.venue?.address?.localized_address_display || t.city;
+      const image = e?.logo?.original?.url || null;
+
+      mapped.push({
+        id: `eb-${e.id}`,
+        title: e?.name?.text || 'Eventbrite Event',
+        venue: venueName,
+        date,
+        vibe: 'ALL',
+        source: 'Eventbrite',
+        link: e?.url || '#',
+        image,
+        description: e?.description?.text || '',
+        activitytype: '',
+        location: t.location,
+      });
+    }
+  }
+
+  // de-dup by title/date/venue
+  const seen = new Set<string>();
+  const deduped: any[] = [];
+  for (const e of mapped) {
+    const key = `${(e.title || '').toLowerCase()}|${(e.date || '').toUpperCase()}|${(e.venue || '').toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(e);
+  }
+
+  console.log(`Eventbrite runtime fetched: ${deduped.length}`);
+  return deduped;
 }
 
 function getPlaceholderImage(vibe: string) {
