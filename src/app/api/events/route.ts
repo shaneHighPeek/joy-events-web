@@ -433,11 +433,8 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
       if (start && start < nowIso) continue;
       const localDate = start ? String(start).slice(0, 10) : '';
 
-      let image: string | null = null;
       const imgs = e?.images?.images || e?.images || [];
-      if (Array.isArray(imgs) && imgs.length > 0) {
-        image = imgs[0]?.transforms?.['7']?.url || imgs[0]?.url || null;
-      }
+      const image = pickEventfindaImage(imgs);
 
       const title = e?.name || 'Eventfinda Event';
       const cat = (e?.category?.name || '').toLowerCase();
@@ -477,6 +474,9 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
       const locCode = classifySeqLocation(venueText);
       if (!locCode) continue;
 
+      const imgs = e?.images?.images || e?.images || [];
+      const image = pickEventfindaImage(imgs);
+
       out.push({
         id: `ef-${e.id}`,
         title: e?.name || 'Eventfinda Event',
@@ -485,7 +485,7 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
         vibe: 'ALL',
         source: 'Eventfinda',
         link: e?.url || '#',
-        image: null,
+        image,
         description: e?.description || '',
         activitytype: e?.category?.name || '',
         location: locCode,
@@ -505,6 +505,40 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
   dbg.filteredCount = deduped.length;
   console.log(`Eventfinda runtime fetched: ${deduped.length}`);
   return deduped;
+}
+
+function normaliseImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const u = String(url).trim();
+  if (!u) return null;
+  if (u.startsWith('//')) return `https:${u}`;
+  if (u.startsWith('/')) return `https://www.eventfinda.com.au${u}`;
+  return u;
+}
+
+function pickEventfindaImage(images: any): string | null {
+  if (!Array.isArray(images) || images.length === 0) return null;
+
+  for (const img of images) {
+    const transforms = img?.transforms;
+    if (transforms && typeof transforms === 'object') {
+      // Prefer larger transforms first when available
+      const values = Object.values(transforms as Record<string, any>) as any[];
+      const sorted = values.sort((a, b) => (Number(b?.width || 0) - Number(a?.width || 0)));
+      for (const t of sorted) {
+        const picked = normaliseImageUrl(t?.url);
+        if (picked) return picked;
+      }
+    }
+
+    const direct = normaliseImageUrl(img?.url);
+    if (direct) return direct;
+
+    const fallback = normaliseImageUrl(img?.original_url || img?.large_url || img?.medium_url || img?.small_url);
+    if (fallback) return fallback;
+  }
+
+  return null;
 }
 
 function getPlaceholderImage(vibe: string) {
