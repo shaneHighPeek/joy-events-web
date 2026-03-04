@@ -8,9 +8,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const ticketmasterApiKey = process.env.TICKETMASTER_API_KEY;
 const eventbriteToken = process.env.EVENTBRITE_TOKEN;
-const cleanEnv = (v?: string) => (v || '').trim().replace(/^['"]|['"]$/g, '');
-const eventfindaUser = cleanEnv(process.env.EVENTFINDA_USER);
-const eventfindaPassword = cleanEnv(process.env.EVENTFINDA_PASSWORD);
+const eventfindaUser = process.env.EVENTFINDA_USER;
+const eventfindaPassword = process.env.EVENTFINDA_PASSWORD;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -395,44 +394,25 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
   ];
 
   const fetchJson = async (url: string) => {
-    let authMode = 'header-basic';
-    let res = await fetch(url, {
+    const res = await fetch(url, {
       headers: {
         Authorization: `Basic ${auth}`,
         Accept: 'application/json',
       },
       cache: 'no-store',
     });
-
-    // Fallback: some gateways/proxies behave differently with header auth.
-    // Retry with URL-embedded basic auth before failing.
-    if (res.status === 401) {
-      try {
-        const u = new URL(url);
-        u.username = user;
-        u.password = password;
-        authMode = 'url-basic';
-        res = await fetch(u.toString(), {
-          headers: { Accept: 'application/json' },
-          cache: 'no-store',
-        });
-      } catch {
-        // proceed with original 401 handling below
-      }
-    }
-
     if (!res.ok) {
-      dbg.requests.push({ url, status: res.status, rawCount: 0, authMode });
+      dbg.requests.push({ url, status: res.status, rawCount: 0 });
       console.error(`Eventfinda HTTP ${res.status} for ${url}`);
       return null;
     }
     try {
       const data = await res.json();
       const rawCount = (data?.events || data?.results || []).length;
-      dbg.requests.push({ url, status: res.status, rawCount, authMode });
+      dbg.requests.push({ url, status: res.status, rawCount });
       return data;
     } catch {
-      dbg.requests.push({ url, status: res.status, rawCount: -1, parseError: true, authMode });
+      dbg.requests.push({ url, status: res.status, rawCount: -1, parseError: true });
       console.error('Eventfinda JSON parse failed');
       return null;
     }
@@ -453,8 +433,11 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
       if (start && start < nowIso) continue;
       const localDate = start ? String(start).slice(0, 10) : '';
 
+      let image: string | null = null;
       const imgs = e?.images?.images || e?.images || [];
-      const image = pickEventfindaImage(imgs);
+      if (Array.isArray(imgs) && imgs.length > 0) {
+        image = imgs[0]?.transforms?.['7']?.url || imgs[0]?.url || null;
+      }
 
       const title = e?.name || 'Eventfinda Event';
       const cat = (e?.category?.name || '').toLowerCase();
@@ -494,9 +477,6 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
       const locCode = classifySeqLocation(venueText);
       if (!locCode) continue;
 
-      const imgs = e?.images?.images || e?.images || [];
-      const image = pickEventfindaImage(imgs);
-
       out.push({
         id: `ef-${e.id}`,
         title: e?.name || 'Eventfinda Event',
@@ -505,7 +485,7 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
         vibe: 'ALL',
         source: 'Eventfinda',
         link: e?.url || '#',
-        image,
+        image: null,
         description: e?.description || '',
         activitytype: e?.category?.name || '',
         location: locCode,
@@ -525,40 +505,6 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
   dbg.filteredCount = deduped.length;
   console.log(`Eventfinda runtime fetched: ${deduped.length}`);
   return deduped;
-}
-
-function normaliseImageUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const u = String(url).trim();
-  if (!u) return null;
-  if (u.startsWith('//')) return `https:${u}`;
-  if (u.startsWith('/')) return `https://www.eventfinda.com.au${u}`;
-  return u;
-}
-
-function pickEventfindaImage(images: any): string | null {
-  if (!Array.isArray(images) || images.length === 0) return null;
-
-  for (const img of images) {
-    const transforms = img?.transforms;
-    if (transforms && typeof transforms === 'object') {
-      // Prefer larger transforms first when available
-      const values = Object.values(transforms as Record<string, any>) as any[];
-      const sorted = values.sort((a, b) => (Number(b?.width || 0) - Number(a?.width || 0)));
-      for (const t of sorted) {
-        const picked = normaliseImageUrl(t?.url);
-        if (picked) return picked;
-      }
-    }
-
-    const direct = normaliseImageUrl(img?.url);
-    if (direct) return direct;
-
-    const fallback = normaliseImageUrl(img?.original_url || img?.large_url || img?.medium_url || img?.small_url);
-    if (fallback) return fallback;
-  }
-
-  return null;
 }
 
 function getPlaceholderImage(vibe: string) {
