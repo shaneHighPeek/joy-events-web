@@ -20,6 +20,7 @@ export async function GET(request: Request) {
   try {
     const dataPath = path.join(process.cwd(), 'src', 'data', 'events.json');
     let allRawEvents: any[] = [];
+    const providerDebug: any = { ticketmaster: {}, eventbrite: {}, eventfinda: {} };
     
     // 1. Load scraped events from JSON
     if (fs.existsSync(dataPath)) {
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
     // 2. Load Ticketmaster events at runtime (if API key configured)
     if (ticketmasterApiKey) {
       try {
-        const tmEvents = await fetchTicketmasterEvents(ticketmasterApiKey);
+        const tmEvents = await fetchTicketmasterEvents(ticketmasterApiKey, providerDebug.ticketmaster);
         if (tmEvents.length > 0) {
           allRawEvents = [...allRawEvents, ...tmEvents];
         }
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
     // 3. Load Eventbrite events at runtime (if token configured)
     if (eventbriteToken) {
       try {
-        const ebEvents = await fetchEventbriteEvents(eventbriteToken);
+        const ebEvents = await fetchEventbriteEvents(eventbriteToken, providerDebug.eventbrite);
         if (ebEvents.length > 0) {
           allRawEvents = [...allRawEvents, ...ebEvents];
         }
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
     // 4. Load Eventfinda events at runtime (if API creds configured)
     if (eventfindaUser && eventfindaPassword) {
       try {
-        const efEvents = await fetchEventfindaEvents(eventfindaUser, eventfindaPassword);
+        const efEvents = await fetchEventfindaEvents(eventfindaUser, eventfindaPassword, providerDebug.eventfinda);
         if (efEvents.length > 0) {
           allRawEvents = [...allRawEvents, ...efEvents];
         }
@@ -183,7 +184,7 @@ export async function GET(request: Request) {
       if (debug) {
         const bySource: Record<string, number> = {};
         for (const e of mappedEvents) bySource[e.source] = (bySource[e.source] || 0) + 1;
-        return NextResponse.json({ events: mappedEvents, debug: { bySource } });
+        return NextResponse.json({ events: mappedEvents, debug: { bySource, providers: providerDebug } });
       }
       return NextResponse.json({ events: mappedEvents });
     }
@@ -226,7 +227,7 @@ function classifySeqLocation(text: string): 'BRISBANE' | 'GC' | 'SC' | '' {
   return '';
 }
 
-async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
+async function fetchTicketmasterEvents(apiKey: string, dbg: any = {}): Promise<any[]> {
   const url = new URL('https://app.ticketmaster.com/discovery/v2/events.json');
   url.searchParams.set('apikey', apiKey);
   url.searchParams.set('stateCode', 'QLD');
@@ -235,13 +236,16 @@ async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
   url.searchParams.set('sort', 'date,asc');
 
   const res = await fetch(url.toString(), { cache: 'no-store' });
+  dbg.httpStatus = res.status;
   if (!res.ok) {
+    dbg.error = `HTTP ${res.status}`;
     console.error(`Ticketmaster HTTP ${res.status}`);
     return [];
   }
 
   const data = await res.json();
   const events = data?._embedded?.events || [];
+  dbg.rawCount = events.length;
 
   const mapped = events
     .map((e: any) => {
@@ -285,11 +289,12 @@ async function fetchTicketmasterEvents(apiKey: string): Promise<any[]> {
     })
     .filter(Boolean) as any[];
 
+  dbg.filteredCount = mapped.length;
   console.log(`Ticketmaster runtime fetched: ${mapped.length}`);
   return mapped;
 }
 
-async function fetchEventbriteEvents(token: string): Promise<any[]> {
+async function fetchEventbriteEvents(token: string, dbg: any = {}): Promise<any[]> {
   const targets = [
     { city: 'Brisbane', location: 'BRISBANE' },
     { city: 'Gold Coast', location: 'GC' },
@@ -300,6 +305,7 @@ async function fetchEventbriteEvents(token: string): Promise<any[]> {
   ];
 
   const mapped: any[] = [];
+  dbg.cities = [];
 
   for (const t of targets) {
     const url = new URL('https://www.eventbriteapi.com/v3/events/search/');
@@ -320,12 +326,14 @@ async function fetchEventbriteEvents(token: string): Promise<any[]> {
     });
 
     if (!res.ok) {
+      dbg.cities.push({ city: t.city, status: res.status, rawCount: 0 });
       console.error(`Eventbrite ${t.city} HTTP ${res.status}`);
       continue;
     }
 
     const data = await res.json();
     const events = data?.events || [];
+    dbg.cities.push({ city: t.city, status: res.status, rawCount: events.length });
 
     for (const e of events) {
       const status = (e?.status || '').toLowerCase();
@@ -366,14 +374,16 @@ async function fetchEventbriteEvents(token: string): Promise<any[]> {
     deduped.push(e);
   }
 
+  dbg.filteredCount = deduped.length;
   console.log(`Eventbrite runtime fetched: ${deduped.length}`);
   return deduped;
 }
 
-async function fetchEventfindaEvents(user: string, password: string): Promise<any[]> {
+async function fetchEventfindaEvents(user: string, password: string, dbg: any = {}): Promise<any[]> {
   const out: any[] = [];
   const auth = Buffer.from(`${user}:${password}`).toString('base64');
   const nowIso = new Date().toISOString();
+  dbg.requests = [];
 
   const targets = [
     { query: 'brisbane', code: 'BRISBANE' },
@@ -392,12 +402,17 @@ async function fetchEventfindaEvents(user: string, password: string): Promise<an
       cache: 'no-store',
     });
     if (!res.ok) {
+      dbg.requests.push({ url, status: res.status, rawCount: 0 });
       console.error(`Eventfinda HTTP ${res.status} for ${url}`);
       return null;
     }
     try {
-      return await res.json();
+      const data = await res.json();
+      const rawCount = (data?.events || data?.results || []).length;
+      dbg.requests.push({ url, status: res.status, rawCount });
+      return data;
     } catch {
+      dbg.requests.push({ url, status: res.status, rawCount: -1, parseError: true });
       console.error('Eventfinda JSON parse failed');
       return null;
     }
@@ -487,6 +502,7 @@ async function fetchEventfindaEvents(user: string, password: string): Promise<an
     deduped.push(e);
   }
 
+  dbg.filteredCount = deduped.length;
   console.log(`Eventfinda runtime fetched: ${deduped.length}`);
   return deduped;
 }
