@@ -394,8 +394,9 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
     { query: 'noosa', code: 'SC' },
   ];
 
-  const fetchJson = async (url: string, retryNoFields = true) => {
-    const res = await fetch(url, {
+  const fetchJson = async (url: string) => {
+    let authMode = 'header-basic';
+    let res = await fetch(url, {
       headers: {
         Authorization: `Basic ${auth}`,
         Accept: 'application/json',
@@ -403,27 +404,35 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
       cache: 'no-store',
     });
 
-    // Some Eventfinda accounts reject specific `fields` selections with auth errors.
-    // Retry once without fields so ingestion remains operational.
-    if (res.status === 401 && retryNoFields && url.includes('fields=')) {
-      const retryUrl = new URL(url);
-      retryUrl.searchParams.delete('fields');
-      dbg.requests.push({ url, status: 401, rawCount: 0, retriedWithoutFields: true });
-      return fetchJson(retryUrl.toString(), false);
+    // Fallback: some gateways/proxies behave differently with header auth.
+    // Retry with URL-embedded basic auth before failing.
+    if (res.status === 401) {
+      try {
+        const u = new URL(url);
+        u.username = user;
+        u.password = password;
+        authMode = 'url-basic';
+        res = await fetch(u.toString(), {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
+      } catch {
+        // proceed with original 401 handling below
+      }
     }
 
     if (!res.ok) {
-      dbg.requests.push({ url, status: res.status, rawCount: 0 });
+      dbg.requests.push({ url, status: res.status, rawCount: 0, authMode });
       console.error(`Eventfinda HTTP ${res.status} for ${url}`);
       return null;
     }
     try {
       const data = await res.json();
       const rawCount = (data?.events || data?.results || []).length;
-      dbg.requests.push({ url, status: res.status, rawCount });
+      dbg.requests.push({ url, status: res.status, rawCount, authMode });
       return data;
     } catch {
-      dbg.requests.push({ url, status: res.status, rawCount: -1, parseError: true });
+      dbg.requests.push({ url, status: res.status, rawCount: -1, parseError: true, authMode });
       console.error('Eventfinda JSON parse failed');
       return null;
     }
