@@ -293,7 +293,10 @@ async function fetchEventbriteEvents(token: string): Promise<any[]> {
   const targets = [
     { city: 'Brisbane', location: 'BRISBANE' },
     { city: 'Gold Coast', location: 'GC' },
+    { city: 'Surfers Paradise', location: 'GC' },
     { city: 'Sunshine Coast', location: 'SC' },
+    { city: 'Maroochydore', location: 'SC' },
+    { city: 'Noosa', location: 'SC' },
   ];
 
   const mapped: any[] = [];
@@ -372,68 +375,107 @@ async function fetchEventfindaEvents(user: string, password: string): Promise<an
   const auth = Buffer.from(`${user}:${password}`).toString('base64');
   const nowIso = new Date().toISOString();
 
-  // Pull broad AU feed, then classify to BNE/GC/SC by venue/location text.
-  const url = new URL('https://api.eventfinda.com.au/v2/events.json');
-  url.searchParams.set('rows', '200');
-  url.searchParams.set('order', 'date');
+  const targets = [
+    { query: 'brisbane', code: 'BRISBANE' },
+    { query: 'gold coast', code: 'GC' },
+    { query: 'sunshine coast', code: 'SC' },
+    { query: 'maroochydore', code: 'SC' },
+    { query: 'noosa', code: 'SC' },
+  ];
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Basic ${auth}`,
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    console.error(`Eventfinda HTTP ${res.status}`);
-    return [];
-  }
-
-  let data: any = null;
-  try {
-    data = await res.json();
-  } catch (e) {
-    console.error('Eventfinda JSON parse failed');
-    return [];
-  }
-
-  const events = data?.events || data?.results || [];
-
-  for (const e of events) {
-    const start = e?.datetime_start || e?.session?.datetime_start || '';
-    if (start && start < nowIso) continue;
-    const localDate = start ? String(start).slice(0, 10) : '';
-
-    const venueText = `${e?.location_summary || ''} ${e?.location?.name || ''} ${e?.location?.summary || ''}`.trim();
-    const locCode = classifySeqLocation(venueText);
-
-    // keep SEQ only
-    if (!locCode) continue;
-
-    let image: string | null = null;
-    const imgs = e?.images?.images || e?.images || [];
-    if (Array.isArray(imgs) && imgs.length > 0) {
-      image = imgs[0]?.transforms?.['7']?.url || imgs[0]?.url || null;
-    }
-
-    const title = e?.name || 'Eventfinda Event';
-    const cat = (e?.category?.name || '').toLowerCase();
-    const vibe = /music|concert|gig/.test(cat + ' ' + title.toLowerCase()) ? 'MUSIC' : 'ALL';
-
-    out.push({
-      id: `ef-${e.id}`,
-      title,
-      venue: e?.location_summary || e?.location?.name || 'Venue TBC',
-      date: localDate || 'Available Today',
-      vibe,
-      source: 'Eventfinda',
-      link: e?.url || '#',
-      image,
-      description: e?.description || '',
-      activitytype: e?.category?.name || '',
-      location: locCode,
+  const fetchJson = async (url: string) => {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
     });
+    if (!res.ok) {
+      console.error(`Eventfinda HTTP ${res.status} for ${url}`);
+      return null;
+    }
+    try {
+      return await res.json();
+    } catch {
+      console.error('Eventfinda JSON parse failed');
+      return null;
+    }
+  };
+
+  // Strategy A: per-region query (more stable mapping)
+  for (const t of targets) {
+    const url = new URL('https://api.eventfinda.com.au/v2/events.json');
+    url.searchParams.set('rows', '80');
+    url.searchParams.set('order', 'date');
+    url.searchParams.set('q', t.query);
+
+    const data = await fetchJson(url.toString());
+    const events = data?.events || data?.results || [];
+
+    for (const e of events) {
+      const start = e?.datetime_start || e?.session?.datetime_start || '';
+      if (start && start < nowIso) continue;
+      const localDate = start ? String(start).slice(0, 10) : '';
+
+      let image: string | null = null;
+      const imgs = e?.images?.images || e?.images || [];
+      if (Array.isArray(imgs) && imgs.length > 0) {
+        image = imgs[0]?.transforms?.['7']?.url || imgs[0]?.url || null;
+      }
+
+      const title = e?.name || 'Eventfinda Event';
+      const cat = (e?.category?.name || '').toLowerCase();
+      const vibe = /music|concert|gig/.test(cat + ' ' + title.toLowerCase()) ? 'MUSIC' : 'ALL';
+      const venueText = `${e?.location_summary || ''} ${e?.location?.name || ''}`.trim();
+      const locCode = classifySeqLocation(`${t.query} ${venueText}`) || t.code;
+
+      out.push({
+        id: `ef-${e.id}`,
+        title,
+        venue: e?.location_summary || e?.location?.name || 'Venue TBC',
+        date: localDate || 'Available Today',
+        vibe,
+        source: 'Eventfinda',
+        link: e?.url || '#',
+        image,
+        description: e?.description || '',
+        activitytype: e?.category?.name || '',
+        location: locCode,
+      });
+    }
+  }
+
+  // Strategy B fallback: broad feed + classify if still empty
+  if (out.length === 0) {
+    const url = new URL('https://api.eventfinda.com.au/v2/events.json');
+    url.searchParams.set('rows', '200');
+    url.searchParams.set('order', 'date');
+    const data = await fetchJson(url.toString());
+    const events = data?.events || data?.results || [];
+
+    for (const e of events) {
+      const start = e?.datetime_start || e?.session?.datetime_start || '';
+      if (start && start < nowIso) continue;
+      const localDate = start ? String(start).slice(0, 10) : '';
+      const venueText = `${e?.location_summary || ''} ${e?.location?.name || ''} ${e?.location?.summary || ''}`.trim();
+      const locCode = classifySeqLocation(venueText);
+      if (!locCode) continue;
+
+      out.push({
+        id: `ef-${e.id}`,
+        title: e?.name || 'Eventfinda Event',
+        venue: e?.location_summary || e?.location?.name || 'Venue TBC',
+        date: localDate || 'Available Today',
+        vibe: 'ALL',
+        source: 'Eventfinda',
+        link: e?.url || '#',
+        image: null,
+        description: e?.description || '',
+        activitytype: e?.category?.name || '',
+        location: locCode,
+      });
+    }
   }
 
   const seen = new Set<string>();
