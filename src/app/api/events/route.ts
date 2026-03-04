@@ -393,7 +393,7 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
     { query: 'noosa', code: 'SC' },
   ];
 
-  const fetchJson = async (url: string) => {
+  const fetchJson = async (url: string, retryNoFields = true) => {
     const res = await fetch(url, {
       headers: {
         Authorization: `Basic ${auth}`,
@@ -401,6 +401,16 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
       },
       cache: 'no-store',
     });
+
+    // Some Eventfinda accounts reject specific `fields` selections with auth errors.
+    // Retry once without fields so ingestion remains operational.
+    if (res.status === 401 && retryNoFields && url.includes('fields=')) {
+      const retryUrl = new URL(url);
+      retryUrl.searchParams.delete('fields');
+      dbg.requests.push({ url, status: 401, rawCount: 0, retriedWithoutFields: true });
+      return fetchJson(retryUrl.toString(), false);
+    }
+
     if (!res.ok) {
       dbg.requests.push({ url, status: res.status, rawCount: 0 });
       console.error(`Eventfinda HTTP ${res.status} for ${url}`);
