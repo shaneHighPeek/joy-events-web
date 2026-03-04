@@ -424,6 +424,7 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
     url.searchParams.set('rows', '80');
     url.searchParams.set('order', 'date');
     url.searchParams.set('q', t.query);
+    url.searchParams.set('fields', 'event:(id,name,url,description,images,datetime_start,location_summary,category),location:(name,summary,address),session:(datetime_start)');
 
     const data = await fetchJson(url.toString());
     const events = data?.events || data?.results || [];
@@ -463,6 +464,7 @@ async function fetchEventfindaEvents(user: string, password: string, dbg: any = 
     const url = new URL('https://api.eventfinda.com.au/v2/events.json');
     url.searchParams.set('rows', '200');
     url.searchParams.set('order', 'date');
+    url.searchParams.set('fields', 'event:(id,name,url,description,images,datetime_start,location_summary,category),location:(name,summary,address),session:(datetime_start)');
     const data = await fetchJson(url.toString());
     const events = data?.events || data?.results || [];
 
